@@ -12,65 +12,85 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
+        android:orientation="vertical"
         android:padding="@dimen/spacing_medium">
 
-        <!-- 小头像 -->
-        <TextView
-            android:id="@+id/tvAvatar"
-            android:layout_width="@dimen/avatar_size_small"
-            android:layout_height="@dimen/avatar_size_small"
-            android:gravity="center"
-            android:textSize="24sp"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold" />
-
-        <!-- 名字和电话 -->
+        <!-- 第一行：头像 + 名字 + 电话 -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="@dimen/spacing_medium">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
+            <!-- 小头像 -->
             <TextView
-                android:id="@+id/tvName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="@dimen/text_name_medium"
-                android:textColor="@color/on_surface"
+                android:id="@+id/tvAvatar"
+                android:layout_width="@dimen/avatar_size_small"
+                android:layout_height="@dimen/avatar_size_small"
+                android:gravity="center"
+                android:textSize="24sp"
+                android:textColor="#FFFFFF"
                 android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/tvPhone"
-                android:layout_width="wrap_content"
+            <!-- 名字和电话 -->
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textSize="@dimen/text_phone"
-                android:textColor="@color/on_surface_secondary" />
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="@dimen/spacing_medium">
+
+                <TextView
+                    android:id="@+id/tvName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="@dimen/text_name_medium"
+                    android:textColor="@color/on_surface"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/tvPhone"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textSize="@dimen/text_phone"
+                    android:textColor="@color/on_surface_secondary"
+                    android:maxLines="1" />
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- 编辑按钮 -->
-        <Button
-            android:id="@+id/btnEdit"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:text="编辑"
-            android:textSize="14sp"
-            android:textColor="@color/primary"
-            android:layout_marginEnd="4dp"
-            style="@style/Widget.Material3.Button.TextButton" />
+        <!-- 第二行：编辑 + 删除按钮，靠右 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end"
+            android:layout_marginTop="8dp">
 
-        <!-- 删除按钮 -->
-        <Button
-            android:id="@+id/btnDelete"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:text="删除"
-            android:textSize="14sp"
-            android:textColor="@color/delete_red"
-            style="@style/Widget.Material3.Button.TextButton" />
+            <Button
+                android:id="@+id/btnEdit"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="编辑"
+                android:textSize="16sp"
+                android:textColor="@color/primary"
+                android:minWidth="80dp"
+                android:layout_marginEnd="12dp"
+                style="@style/Widget.Material3.Button.TonalButton" />
+
+            <Button
+                android:id="@+id/btnDelete"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="删除"
+                android:textSize="16sp"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="@color/delete_red"
+                android:minWidth="80dp"
+                style="@style/Widget.Material3.Button" />
+        </LinearLayout>
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

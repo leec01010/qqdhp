@@ -120,23 +120,50 @@ class ManageActivity : AppCompatActivity() {
     private fun showImportPicker() {
         Thread {
             val phoneContacts = readPhoneContacts()
-            runOnUiThread {
-                if (phoneContacts.isEmpty()) {
+            if (phoneContacts.isEmpty()) {
+                runOnUiThread {
                     Toast.makeText(this, "手机通讯录是空的", Toast.LENGTH_SHORT).show()
-                    return@runOnUiThread
                 }
+                return@Thread
+            }
 
-                val names = phoneContacts.map { "${it.first}  ${it.second}" }.toTypedArray()
-                val checked = BooleanArray(names.size) { false }
-                var allSelected = false
+            // 读取本地数据库已有的电话号码
+            val dao = (application as App).database.contactDao()
+            val existingPhones = dao.getAllSync().map {
+                it.phone.replace("\\s+".toRegex(), "").replace("-", "")
+            }.toSet()
+
+            // 标记每个联系人是否已存在
+            val isExisting = phoneContacts.map { (_, phone) ->
+                phone.replace("\\s+".toRegex(), "").replace("-", "") in existingPhones
+            }
+
+            val names = phoneContacts.mapIndexed { i, (name, phone) ->
+                if (isExisting[i]) "$name  $phone（已导入）" else "$name  $phone"
+            }.toTypedArray()
+
+            // 已存在的预勾选
+            val checked = BooleanArray(names.size) { isExisting[it] }
+
+            runOnUiThread {
+                var allNewSelected = false
 
                 val dialog = AlertDialog.Builder(this)
                     .setTitle("选择要导入的联系人")
-                    .setMultiChoiceItems(names, checked) { _, which, isChecked ->
-                        checked[which] = isChecked
+                    .setMultiChoiceItems(names, checked) { dialogInterface, which, isChecked ->
+                        // 已存在的不允许取消勾选
+                        if (isExisting[which]) {
+                            (dialogInterface as AlertDialog).listView.setItemChecked(which, true)
+                            checked[which] = true
+                        } else {
+                            checked[which] = isChecked
+                        }
                     }
                     .setPositiveButton("导入") { _, _ ->
-                        importSelected(phoneContacts, checked)
+                        // 只导入新勾选的（排除已存在的）
+                        importSelected(phoneContacts, BooleanArray(checked.size) { i ->
+                            checked[i] && !isExisting[i]
+                        })
                     }
                     .setNegativeButton("取消", null)
                     .setNeutralButton("全选", null)
@@ -144,16 +171,27 @@ class ManageActivity : AppCompatActivity() {
 
                 dialog.show()
 
-                // 用 setOnClickListener 防止点全选后弹窗关闭
-                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                    allSelected = !allSelected
-                    val listView = dialog.listView
+                // 已存在的项置灰
+                val listView = dialog.listView
+                listView.post {
                     for (i in names.indices) {
-                        checked[i] = allSelected
-                        listView.setItemChecked(i, allSelected)
+                        if (isExisting[i]) {
+                            listView.getChildAt(i)?.alpha = 0.4f
+                        }
+                    }
+                }
+
+                // 全选只操作新联系人
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                    allNewSelected = !allNewSelected
+                    for (i in names.indices) {
+                        if (!isExisting[i]) {
+                            checked[i] = allNewSelected
+                            listView.setItemChecked(i, allNewSelected)
+                        }
                     }
                     dialog.getButton(AlertDialog.BUTTON_NEUTRAL).text =
-                        if (allSelected) "取消全选" else "全选"
+                        if (allNewSelected) "取消全选" else "全选"
                 }
             }
         }.start()
