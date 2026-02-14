@@ -4,7 +4,7 @@ import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageButton
+import android.widget.Button
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -21,8 +21,8 @@ class ContactManageAdapter(
         val tvAvatar: TextView = view.findViewById(R.id.tvAvatar)
         val tvName: TextView = view.findViewById(R.id.tvName)
         val tvPhone: TextView = view.findViewById(R.id.tvPhone)
-        val btnEdit: ImageButton = view.findViewById(R.id.btnEdit)
-        val btnDelete: ImageButton = view.findViewById(R.id.btnDelete)
+        val btnEdit: Button = view.findViewById(R.id.btnEdit)
+        val btnDelete: Button = view.findViewById(R.id.btnDelete)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {

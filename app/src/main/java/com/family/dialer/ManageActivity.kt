@@ -5,7 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.ContactsContract
-import android.widget.ImageButton
+import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -27,9 +27,9 @@ class ManageActivity : AppCompatActivity() {
         setContentView(R.layout.activity_manage)
 
         recyclerView = findViewById(R.id.recyclerManage)
-        val btnBack: ImageButton = findViewById(R.id.btnBack)
-        val btnAdd: ImageButton = findViewById(R.id.btnAdd)
-        val btnImport: ImageButton = findViewById(R.id.btnImport)
+        val btnBack: Button = findViewById(R.id.btnBack)
+        val btnAdd: Button = findViewById(R.id.btnAdd)
+        val btnImport: Button = findViewById(R.id.btnImport)
 
         recyclerView.layoutManager = LinearLayoutManager(this)
 
@@ -128,8 +128,9 @@ class ManageActivity : AppCompatActivity() {
 
                 val names = phoneContacts.map { "${it.first}  ${it.second}" }.toTypedArray()
                 val checked = BooleanArray(names.size) { false }
+                var allSelected = false
 
-                AlertDialog.Builder(this)
+                val dialog = AlertDialog.Builder(this)
                     .setTitle("选择要导入的联系人")
                     .setMultiChoiceItems(names, checked) { _, which, isChecked ->
                         checked[which] = isChecked
@@ -138,7 +139,22 @@ class ManageActivity : AppCompatActivity() {
                         importSelected(phoneContacts, checked)
                     }
                     .setNegativeButton("取消", null)
-                    .show()
+                    .setNeutralButton("全选", null)
+                    .create()
+
+                dialog.show()
+
+                // 用 setOnClickListener 防止点全选后弹窗关闭
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                    allSelected = !allSelected
+                    val listView = dialog.listView
+                    for (i in names.indices) {
+                        checked[i] = allSelected
+                        listView.setItemChecked(i, allSelected)
+                    }
+                    dialog.getButton(AlertDialog.BUTTON_NEUTRAL).text =
+                        if (allSelected) "取消全选" else "全选"
+                }
             }
         }.start()
     }
@@ -196,6 +212,11 @@ class ManageActivity : AppCompatActivity() {
             }
             runOnUiThread {
                 Toast.makeText(this, "已导入 $count 位联系人", Toast.LENGTH_SHORT).show()
+                // 导入后直接返回主页面
+                val intent = Intent(this, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                startActivity(intent)
+                finish()
             }
         }.start()
     }

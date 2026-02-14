@@ -52,24 +52,25 @@
         </LinearLayout>
 
         <!-- 编辑按钮 -->
-        <ImageButton
+        <Button
             android:id="@+id/btnEdit"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:src="@android:drawable/ic_menu_edit"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="编辑"
-            android:tint="@color/primary" />
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="编辑"
+            android:textSize="14sp"
+            android:textColor="@color/primary"
+            android:layout_marginEnd="4dp"
+            style="@style/Widget.Material3.Button.TextButton" />
 
         <!-- 删除按钮 -->
-        <ImageButton
+        <Button
             android:id="@+id/btnDelete"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:src="@android:drawable/ic_menu_delete"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="删除"
-            android:tint="@color/delete_red" />
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="删除"
+            android:textSize="14sp"
+            android:textColor="@color/delete_red"
+            style="@style/Widget.Material3.Button.TextButton" />
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

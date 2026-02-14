@@ -13,43 +13,53 @@
         android:gravity="center_vertical"
         android:padding="@dimen/spacing_medium">
 
-        <ImageButton
+        <Button
             android:id="@+id/btnBack"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_menu_revert"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="返回"
-            android:tint="@color/on_primary" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/title_manage"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="返回"
+            android:textSize="16sp"
             android:textColor="@color/on_primary"
-            android:textSize="@dimen/text_title"
-            android:textStyle="bold"
-            android:gravity="center" />
+            android:backgroundTint="@color/primary_dark"
+            style="@style/Widget.Material3.Button.TextButton" />
 
-        <ImageButton
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <Button
             android:id="@+id/btnImport"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_menu_agenda"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="导入"
-            android:tint="@color/on_primary" />
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="导入"
+            android:textSize="16sp"
+            android:textColor="@color/on_primary"
+            android:backgroundTint="@color/primary_dark"
+            style="@style/Widget.Material3.Button.TextButton" />
 
-        <ImageButton
+        <Button
             android:id="@+id/btnAdd"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_input_add"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="添加"
-            android:tint="@color/on_primary" />
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="添加"
+            android:textSize="16sp"
+            android:textColor="@color/on_primary"
+            android:backgroundTint="@color/primary_dark"
+            style="@style/Widget.Material3.Button.TextButton" />
     </LinearLayout>
+
+    <!-- 标题 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/title_manage"
+        android:textSize="@dimen/text_title"
+        android:textStyle="bold"
+        android:textColor="@color/on_surface"
+        android:gravity="center"
+        android:padding="@dimen/spacing_medium"
+        android:background="@color/surface" />
 
     <!-- 联系人列表 -->
     <androidx.recyclerview.widget.RecyclerView

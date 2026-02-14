@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.text.Html
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -63,9 +64,15 @@ class MainActivity : AppCompatActivity() {
      * 拨号前弹窗确认
      */
     private fun showCallConfirmDialog(contact: Contact) {
+        val msg = Html.fromHtml(
+            "确定要拨打吗？<br/><br/>" +
+            "名字<br/><b><font color='#C62828'>${contact.name}</font></b><br/><br/>" +
+            "电话<br/><b><font color='#C62828'>${contact.phone}</font></b>",
+            Html.FROM_HTML_MODE_COMPACT
+        )
         AlertDialog.Builder(this)
             .setTitle("拨打电话")
-            .setMessage("确定要拨打 ${contact.name}（${contact.phone}）吗？")
+            .setMessage(msg)
             .setPositiveButton("拨打") { _, _ ->
                 makeCall(contact)
             }
