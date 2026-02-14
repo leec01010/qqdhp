@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">亲情电话</string>
+    <string name="title_main">亲情电话</string>
+    <string name="title_manage">管理联系人</string>
+    <string name="title_add">添加联系人</string>
+    <string name="title_edit">编辑联系人</string>
+    <string name="btn_manage">⚙ 管理</string>
+    <string name="btn_add">添加</string>
+    <string name="btn_save">保存</string>
+    <string name="btn_cancel">取消</string>
+    <string name="btn_delete">删除</string>
+    <string name="hint_name">请输入姓名</string>
+    <string name="hint_phone">请输入电话号码</string>
+    <string name="label_name">姓名</string>
+    <string name="label_phone">电话号码</string>
+    <string name="label_color">选择头像颜色</string>
+    <string name="empty_contacts">还没有联系人\n长按下方「管理」按钮\n添加家人电话</string>
+    <string name="long_press_hint">长按 3 秒进入管理</string>
+    <string name="confirm_delete_title">确认删除</string>
+    <string name="confirm_delete_msg">确定要删除「%s」吗？</string>
+    <string name="toast_saved">已保存</string>
+    <string name="toast_deleted">已删除</string>
+    <string name="toast_name_required">请输入姓名</string>
+    <string name="toast_phone_required">请输入电话号码</string>
+    <string name="toast_permission_denied">需要电话权限才能拨号</string>
+    <string name="toast_calling">正在拨打 %s…</string>
+</resources>

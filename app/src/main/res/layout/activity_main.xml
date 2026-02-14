@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+    <!-- 顶部标题栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/primary"
+        android:gravity="center"
+        android:padding="@dimen/spacing_medium">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/title_main"
+            android:textColor="@color/on_primary"
+            android:textSize="@dimen/text_title"
+            android:textStyle="bold"
+            android:drawablePadding="8dp" />
+    </LinearLayout>
+
+    <!-- 联系人网格 -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerContacts"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="@dimen/spacing_small"
+            android:clipToPadding="false" />
+
+        <!-- 空状态提示 -->
+        <TextView
+            android:id="@+id/tvEmpty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/empty_contacts"
+            android:textSize="@dimen/text_name_medium"
+            android:textColor="@color/on_surface_secondary"
+            android:gravity="center"
+            android:lineSpacingExtra="8dp"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <!-- 底部管理按钮 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="@dimen/spacing_medium"
+        android:background="@color/surface"
+        android:elevation="8dp">
+
+        <Button
+            android:id="@+id/btnManage"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/button_height"
+            android:text="@string/btn_manage"
+            android:textSize="@dimen/text_button"
+            android:paddingStart="32dp"
+            android:paddingEnd="32dp"
+            android:backgroundTint="@color/on_surface_secondary"
+            style="@style/Widget.Material3.Button" />
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 主题色 -->
+    <color name="primary">#1565C0</color>
+    <color name="primary_dark">#0D47A1</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="background">#F5F5F5</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="on_surface">#212121</color>
+    <color name="on_surface_secondary">#757575</color>
+
+    <!-- 预设头像颜色（温暖、醒目、好区分） -->
+    <color name="avatar_red">#E53935</color>
+    <color name="avatar_pink">#D81B60</color>
+    <color name="avatar_purple">#8E24AA</color>
+    <color name="avatar_blue">#1E88E5</color>
+    <color name="avatar_teal">#00897B</color>
+    <color name="avatar_green">#43A047</color>
+    <color name="avatar_orange">#FB8C00</color>
+    <color name="avatar_brown">#6D4C41</color>
+
+    <!-- 拨号按钮 -->
+    <color name="call_green">#2E7D32</color>
+    <color name="call_green_dark">#1B5E20</color>
+
+    <!-- 删除按钮 -->
+    <color name="delete_red">#C62828</color>
+</resources>

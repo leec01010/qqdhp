@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="@dimen/card_margin"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="@color/surface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="@dimen/spacing_medium">
+
+        <!-- 小头像 -->
+        <TextView
+            android:id="@+id/tvAvatar"
+            android:layout_width="@dimen/avatar_size_small"
+            android:layout_height="@dimen/avatar_size_small"
+            android:gravity="center"
+            android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+
+        <!-- 名字和电话 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="@dimen/spacing_medium">
+
+            <TextView
+                android:id="@+id/tvName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/text_name_medium"
+                android:textColor="@color/on_surface"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvPhone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="@dimen/text_phone"
+                android:textColor="@color/on_surface_secondary" />
+        </LinearLayout>
+
+        <!-- 编辑按钮 -->
+        <ImageButton
+            android:id="@+id/btnEdit"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@android:drawable/ic_menu_edit"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="编辑"
+            android:tint="@color/primary" />
+
+        <!-- 删除按钮 -->
+        <ImageButton
+            android:id="@+id/btnDelete"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@android:drawable/ic_menu_delete"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="删除"
+            android:tint="@color/delete_red" />
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

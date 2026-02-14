@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 大字体 for 老人 -->
+    <dimen name="text_title">28sp</dimen>
+    <dimen name="text_name_large">26sp</dimen>
+    <dimen name="text_name_medium">20sp</dimen>
+    <dimen name="text_phone">16sp</dimen>
+    <dimen name="text_hint">18sp</dimen>
+    <dimen name="text_button">20sp</dimen>
+    <dimen name="text_avatar">36sp</dimen>
+
+    <!-- 头像 -->
+    <dimen name="avatar_size_large">96dp</dimen>
+    <dimen name="avatar_size_small">56dp</dimen>
+
+    <!-- 卡片 -->
+    <dimen name="card_padding">16dp</dimen>
+    <dimen name="card_margin">8dp</dimen>
+    <dimen name="card_radius">16dp</dimen>
+    <dimen name="card_elevation">4dp</dimen>
+
+    <!-- 按钮 -->
+    <dimen name="button_height">56dp</dimen>
+    <dimen name="button_radius">12dp</dimen>
+
+    <!-- 间距 -->
+    <dimen name="spacing_small">8dp</dimen>
+    <dimen name="spacing_medium">16dp</dimen>
+    <dimen name="spacing_large">24dp</dimen>
+
+    <!-- 输入框 -->
+    <dimen name="input_text_size">22sp</dimen>
+
+    <!-- 颜色选择圆圈 -->
+    <dimen name="color_circle_size">48dp</dimen>
+</resources>

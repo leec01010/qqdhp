@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardContact"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="@dimen/card_margin"
+    app:cardCornerRadius="@dimen/card_radius"
+    app:cardElevation="@dimen/card_elevation"
+    app:cardBackgroundColor="@color/surface"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="@dimen/card_padding">
+
+        <!-- 圆形头像 -->
+        <TextView
+            android:id="@+id/tvAvatar"
+            android:layout_width="@dimen/avatar_size_large"
+            android:layout_height="@dimen/avatar_size_large"
+            android:gravity="center"
+            android:textSize="@dimen/text_avatar"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+
+        <!-- 名字 -->
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:textSize="@dimen/text_name_large"
+            android:textColor="@color/on_surface"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <!-- 拨号按钮 -->
+        <Button
+            android:id="@+id/btnCall"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:text="📞 拨号"
+            android:textSize="@dimen/text_phone"
+            android:backgroundTint="@color/call_green"
+            style="@style/Widget.Material3.Button" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

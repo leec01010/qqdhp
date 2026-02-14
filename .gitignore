@@ -1,0 +1,21 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Gradle
+.gradle/
+build/
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# Local configuration
+local.properties
+*.iml
+.idea/
+
+# APK
+*.apk
+*.aab
+
+# OS
+.DS_Store
+Thumbs.db

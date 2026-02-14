@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+    <!-- 顶部标题栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/primary"
+        android:gravity="center_vertical"
+        android:padding="@dimen/spacing_medium">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_menu_revert"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="返回"
+            android:tint="@color/on_primary" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/title_add"
+            android:textColor="@color/on_primary"
+            android:textSize="@dimen/text_title"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <!-- 占位，保持标题居中 -->
+        <View
+            android:layout_width="48dp"
+            android:layout_height="48dp" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/spacing_large">
+
+            <!-- 头像预览 -->
+            <TextView
+                android:id="@+id/tvAvatarPreview"
+                android:layout_width="@dimen/avatar_size_large"
+                android:layout_height="@dimen/avatar_size_large"
+                android:layout_gravity="center_horizontal"
+                android:gravity="center"
+                android:textSize="@dimen/text_avatar"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:text="?"
+                android:layout_marginBottom="@dimen/spacing_large" />
+
+            <!-- 姓名 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_name"
+                android:textSize="@dimen/text_phone"
+                android:textColor="@color/on_surface_secondary"
+                android:layout_marginBottom="@dimen/spacing_small" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/spacing_medium"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/hint_name"
+                    android:textSize="@dimen/input_text_size"
+                    android:inputType="textPersonName"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- 电话 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_phone"
+                android:textSize="@dimen/text_phone"
+                android:textColor="@color/on_surface_secondary"
+                android:layout_marginBottom="@dimen/spacing_small" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/spacing_large"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etPhone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/hint_phone"
+                    android:textSize="@dimen/input_text_size"
+                    android:inputType="phone"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- 颜色选择 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_color"
+                android:textSize="@dimen/text_phone"
+                android:textColor="@color/on_surface_secondary"
+                android:layout_marginBottom="@dimen/spacing_small" />
+
+            <LinearLayout
+                android:id="@+id/colorContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="@dimen/spacing_large" />
+
+            <!-- 保存按钮 -->
+            <Button
+                android:id="@+id/btnSave"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/button_height"
+                android:text="@string/btn_save"
+                android:textSize="@dimen/text_button"
+                style="@style/Widget.Material3.Button" />
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>
