@@ -15,8 +15,8 @@
     <string name="label_name">姓名</string>
     <string name="label_phone">电话号码</string>
     <string name="label_color">选择头像颜色</string>
-    <string name="empty_contacts">还没有联系人\n长按下方「管理」按钮\n添加家人电话</string>
-    <string name="long_press_hint">长按 3 秒进入管理</string>
+    <string name="empty_contacts">还没有联系人\n点击下方「管理」按钮\n添加家人电话</string>
+    <string name="long_press_hint">点击进入管理</string>
     <string name="confirm_delete_title">确认删除</string>
     <string name="confirm_delete_msg">确定要删除「%s」吗？</string>
     <string name="toast_saved">已保存</string>

@@ -33,6 +33,15 @@
             android:gravity="center" />
 
         <ImageButton
+            android:id="@+id/btnImport"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_menu_agenda"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="导入"
+            android:tint="@color/on_primary" />
+
+        <ImageButton
             android:id="@+id/btnAdd"
             android:layout_width="48dp"
             android:layout_height="48dp"

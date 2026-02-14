@@ -1,5 +1,6 @@
 package com.family.dialer
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -182,6 +183,10 @@ class AddEditContactActivity : AppCompatActivity() {
             }
             runOnUiThread {
                 Toast.makeText(this, getString(R.string.toast_saved), Toast.LENGTH_SHORT).show()
+                // 直接返回主页面
+                val intent = Intent(this, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                startActivity(intent)
                 finish()
             }
         }.start()
