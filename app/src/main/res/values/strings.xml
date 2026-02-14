@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">亲情电话</string>
-    <string name="title_main">亲情电话</string>
+    <string name="app_name">电话铺</string>
+    <string name="title_main">电话铺</string>
     <string name="title_manage">管理联系人</string>
     <string name="title_add">添加联系人</string>
     <string name="title_edit">编辑联系人</string>
