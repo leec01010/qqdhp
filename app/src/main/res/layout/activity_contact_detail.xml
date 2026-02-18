@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+    <!-- 顶部栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/primary"
+        android:gravity="center_vertical"
+        android:padding="@dimen/spacing_medium">
+
+        <Button
+            android:id="@+id/btnBack"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="返回"
+            android:textSize="16sp"
+            android:textColor="@color/on_primary"
+            android:backgroundTint="@color/primary_dark"
+            style="@style/Widget.Material3.Button.TextButton" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="@dimen/spacing_large">
+
+            <!-- 大头像 -->
+            <TextView
+                android:id="@+id/tvAvatar"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_marginTop="24dp"
+                android:gravity="center"
+                android:textSize="48sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold" />
+
+            <!-- 名字 -->
+            <TextView
+                android:id="@+id/tvName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:textSize="32sp"
+                android:textColor="@color/on_surface"
+                android:textStyle="bold" />
+
+            <!-- 电话 -->
+            <TextView
+                android:id="@+id/tvPhone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="20sp"
+                android:textColor="@color/on_surface_secondary" />
+
+            <!-- 微信备注名 -->
+            <TextView
+                android:id="@+id/tvWechat"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="16sp"
+                android:textColor="@color/on_surface_secondary"
+                android:visibility="gone" />
+
+            <!-- 两个大按钮 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="40dp">
+
+                <!-- 打电话 -->
+                <Button
+                    android:id="@+id/btnCall"
+                    android:layout_width="match_parent"
+                    android:layout_height="72dp"
+                    android:text="打电话"
+                    android:textSize="24sp"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="@color/call_green"
+                    style="@style/Widget.Material3.Button" />
+
+                <!-- 微信视频 -->
+                <Button
+                    android:id="@+id/btnWechatVideo"
+                    android:layout_width="match_parent"
+                    android:layout_height="72dp"
+                    android:layout_marginTop="16dp"
+                    android:text="微信视频"
+                    android:textSize="24sp"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#07C160"
+                    style="@style/Widget.Material3.Button" />
+
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

@@ -22,6 +22,7 @@ class AddEditContactActivity : AppCompatActivity() {
     private lateinit var tvAvatarPreview: TextView
     private lateinit var etName: TextInputEditText
     private lateinit var etPhone: TextInputEditText
+    private lateinit var etWechat: TextInputEditText
     private lateinit var colorContainer: LinearLayout
     private lateinit var btnSave: Button
 
@@ -51,6 +52,7 @@ class AddEditContactActivity : AppCompatActivity() {
         tvAvatarPreview = findViewById(R.id.tvAvatarPreview)
         etName = findViewById(R.id.etName)
         etPhone = findViewById(R.id.etPhone)
+        etWechat = findViewById(R.id.etWechat)
         colorContainer = findViewById(R.id.colorContainer)
         btnSave = findViewById(R.id.btnSave)
         val btnBack: ImageButton = findViewById(R.id.btnBack)
@@ -118,11 +120,8 @@ class AddEditContactActivity : AppCompatActivity() {
 
     private fun selectColor(index: Int, color: Int) {
         selectedColor = color
-        // 清除所有选中标记
         colorViews.forEach { it.text = "" }
-        // 标记当前选中
         colorViews[index].text = "✓"
-        // 更新预览
         updateAvatarPreview()
     }
 
@@ -144,8 +143,8 @@ class AddEditContactActivity : AppCompatActivity() {
                 runOnUiThread {
                     etName.setText(it.name)
                     etPhone.setText(it.phone)
+                    etWechat.setText(it.wechatName ?: "")
                     selectedColor = it.color
-                    // 找到对应颜色并选中
                     val colorIndex = presetColors.indexOfFirst { c -> c == it.color }
                     if (colorIndex >= 0) {
                         selectColor(colorIndex, it.color)
@@ -159,6 +158,7 @@ class AddEditContactActivity : AppCompatActivity() {
     private fun saveContact() {
         val name = etName.text?.toString()?.trim() ?: ""
         val phone = etPhone.text?.toString()?.trim() ?: ""
+        val wechat = etWechat.text?.toString()?.trim()?.ifBlank { null }
 
         if (name.isEmpty()) {
             Toast.makeText(this, getString(R.string.toast_name_required), Toast.LENGTH_SHORT).show()
@@ -172,18 +172,15 @@ class AddEditContactActivity : AppCompatActivity() {
         Thread {
             val dao = (application as App).database.contactDao()
             if (editContactId != -1L) {
-                // 编辑模式
                 val existing = dao.getById(editContactId)
                 existing?.let {
-                    dao.update(it.copy(name = name, phone = phone, color = selectedColor))
+                    dao.update(it.copy(name = name, phone = phone, color = selectedColor, wechatName = wechat))
                 }
             } else {
-                // 添加模式
-                dao.insert(Contact(name = name, phone = phone, color = selectedColor))
+                dao.insert(Contact(name = name, phone = phone, color = selectedColor, wechatName = wechat))
             }
             runOnUiThread {
                 Toast.makeText(this, getString(R.string.toast_saved), Toast.LENGTH_SHORT).show()
-                // 直接返回主页面
                 val intent = Intent(this, MainActivity::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 startActivity(intent)

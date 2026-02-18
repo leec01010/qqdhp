@@ -4,7 +4,6 @@ import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -13,13 +12,12 @@ import com.family.dialer.R
 import com.family.dialer.data.Contact
 
 class ContactGridAdapter(
-    private val onCallClick: (Contact) -> Unit
+    private val onContactClick: (Contact) -> Unit
 ) : ListAdapter<Contact, ContactGridAdapter.ViewHolder>(ContactDiffCallback()) {
 
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvAvatar: TextView = view.findViewById(R.id.tvAvatar)
         val tvName: TextView = view.findViewById(R.id.tvName)
-        val btnCall: Button = view.findViewById(R.id.btnCall)
         val card: View = view.findViewById(R.id.cardContact)
     }
 
@@ -45,9 +43,8 @@ class ContactGridAdapter(
         // 名字
         holder.tvName.text = contact.name
 
-        // 点击拨号
-        holder.btnCall.setOnClickListener { onCallClick(contact) }
-        holder.card.setOnClickListener { onCallClick(contact) }
+        // 点击跳转详情页
+        holder.card.setOnClickListener { onContactClick(contact) }
     }
 
     class ContactDiffCallback : DiffUtil.ItemCallback<Contact>() {

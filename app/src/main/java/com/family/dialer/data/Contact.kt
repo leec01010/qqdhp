@@ -10,5 +10,6 @@ data class Contact(
     val name: String,
     val phone: String,
     val color: Int, // 头像背景色 (Color int)
-    val sortOrder: Int = 0
+    val sortOrder: Int = 0,
+    val wechatName: String? = null // 微信备注名，用于无障碍服务搜索
 )

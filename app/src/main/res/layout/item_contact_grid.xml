@@ -42,17 +42,6 @@
             android:maxLines="1"
             android:ellipsize="end" />
 
-        <!-- 拨号按钮 -->
-        <Button
-            android:id="@+id/btnCall"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="@dimen/spacing_small"
-            android:text="📞 拨号"
-            android:textSize="@dimen/text_phone"
-            android:backgroundTint="@color/call_green"
-            style="@style/Widget.Material3.Button" />
-
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>
