@@ -3,6 +3,7 @@ package com.family.dialer
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
+import android.graphics.Rect
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
@@ -70,51 +71,84 @@ class WeChatVideoService : AccessibilityService() {
     }
 
     /**
-     * 步骤1：在微信主界面点击搜索
+     * 步骤1：点击微信顶栏的放大镜搜索按钮
+     *
+     * 微信主界面顶栏布局：左边 "微信(80)"，右边 🔍 ⊕
+     * 搜索 🔍 在 ⊕ 的左边，都在顶栏右侧
+     * 这些按钮没有 contentDescription，只能按位置找
      */
     private fun handleOpenWechat(root: AccessibilityNodeInfo) {
-        // 方式1：按 contentDescription 找
-        val searchBtn = findClickableByDescription(root, "搜索")
-            ?: findClickableByDescription(root, "搜寻")
-            ?: findClickableByDescription(root, "Search")
+        // 如果已经有 EditText（搜索框已出现），直接跳到输入
+        val editText = findNodeByClassName(root, "android.widget.EditText")
+        if (editText != null) {
+            currentStep = Step.INPUT_NAME
+            retryCount = 0
+            processCurrentStep()
+            return
+        }
 
-        if (searchBtn != null) {
-            tip("步骤1/5：点击搜索按钮")
+        // 收集顶栏区域（y < 200px）的所有可点击元素，按 x 坐标排序
+        val topClickables = mutableListOf<Pair<AccessibilityNodeInfo, Rect>>()
+        traverseAll(root) { node ->
+            if (node.isClickable) {
+                val rect = Rect()
+                node.getBoundsInScreen(rect)
+                // 顶栏区域：y < 250，且不能太小（排除状态栏图标）
+                if (rect.top < 250 && rect.height() > 20 && rect.width() > 20) {
+                    topClickables.add(Pair(node, rect))
+                }
+            }
+        }
+
+        // 按 x 坐标从左到右排序
+        topClickables.sortBy { it.second.left }
+
+        if (topClickables.size >= 2) {
+            // 右边倒数第二个就是 🔍（最右边是 ⊕）
+            val searchBtn = topClickables[topClickables.size - 2].first
+            val rect = topClickables[topClickables.size - 2].second
+            tip("步骤1/5：点击搜索🔍 (位置:${rect.left},${rect.top})")
             searchBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             currentStep = Step.INPUT_NAME
             retryCount = 0
             handler.postDelayed({ processCurrentStep() }, 1000)
-            return
-        }
-
-        // 方式2：找右上角的图标按钮
-        val topRightBtn = findTopRightClickable(root)
-        if (topRightBtn != null) {
-            tip("步骤1/5：点击右上角搜索图标")
-            topRightBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        } else if (topClickables.size == 1) {
+            // 只有一个，试试点击
+            tip("步骤1/5：点击顶栏按钮")
+            topClickables[0].first.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             currentStep = Step.INPUT_NAME
             retryCount = 0
             handler.postDelayed({ processCurrentStep() }, 1000)
-            return
+        } else {
+            // 备用：尝试按文字找
+            val searchText = findNodeByText(root, "搜索")
+            if (searchText != null) {
+                val clickable = findClickableParent(searchText) ?: searchText
+                clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                currentStep = Step.INPUT_NAME
+                retryCount = 0
+                handler.postDelayed({ processCurrentStep() }, 1000)
+            } else {
+                if (retryCount == 3) {
+                    tip("找不到搜索按钮，顶栏可点击元素: ${topClickables.size}个")
+                }
+                scheduleRetry("找不到搜索按钮")
+            }
         }
-
-        // 方式3：收集所有节点的描述，帮助调试
-        if (retryCount == 3) {
-            val descs = collectDescriptions(root)
-            tip("未找到搜索按钮，界面元素: $descs")
-        }
-
-        scheduleRetry("找不到搜索按钮")
     }
 
     /**
      * 步骤2：在搜索框输入备注名
+     * 搜索页顶部有 EditText，hint 是 "搜索本地或网络结果"
      */
     private fun handleInputName(root: AccessibilityNodeInfo) {
         val targetName = targetWechatName ?: return
 
         val editText = findNodeByClassName(root, "android.widget.EditText")
         if (editText != null) {
+            editText.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+            editText.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+
             tip("步骤2/5：输入「$targetName」")
             val args = Bundle()
             args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, targetName)
@@ -123,56 +157,105 @@ class WeChatVideoService : AccessibilityService() {
             retryCount = 0
             handler.postDelayed({ processCurrentStep() }, 2000)
         } else {
-            scheduleRetry("找不到搜索框")
+            scheduleRetry("搜索框还没出现")
         }
     }
 
     /**
-     * 步骤3：点击搜索结果
+     * 步骤3：点击搜索结果中的联系人
      */
     private fun handleClickResult(root: AccessibilityNodeInfo) {
         val targetName = targetWechatName ?: return
 
         val resultNode = findNodeByText(root, targetName)
         if (resultNode != null) {
-            tip("步骤3/5：点击联系人「$targetName」")
-            val clickable = findClickableParent(resultNode) ?: resultNode
-            clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-            currentStep = Step.CLICK_PLUS
-            retryCount = 0
-            handler.postDelayed({ processCurrentStep() }, 2000)
-        } else {
-            scheduleRetry("找不到「$targetName」")
+            // 排除搜索框本身（里面也有输入的文字）
+            val isInEditText = isInsideEditText(resultNode)
+            if (!isInEditText) {
+                tip("步骤3/5：点击「$targetName」")
+                val clickable = findClickableParent(resultNode) ?: resultNode
+                clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                currentStep = Step.CLICK_PLUS
+                retryCount = 0
+                handler.postDelayed({ processCurrentStep() }, 2000)
+                return
+            }
+
+            // 搜索框里的那个匹配，继续找其他的
+            val allMatches = root.findAccessibilityNodeInfosByText(targetName)
+            val resultMatch = allMatches?.firstOrNull { !isInsideEditText(it) }
+            if (resultMatch != null) {
+                tip("步骤3/5：点击「$targetName」")
+                val clickable = findClickableParent(resultMatch) ?: resultMatch
+                clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                currentStep = Step.CLICK_PLUS
+                retryCount = 0
+                handler.postDelayed({ processCurrentStep() }, 2000)
+                return
+            }
         }
+
+        if (retryCount == 5) {
+            val texts = collectTexts(root)
+            tip("找不到「$targetName」，界面: $texts")
+        }
+        scheduleRetry("搜索结果还没出来")
     }
 
     /**
-     * 步骤4：点击聊天界面的「+」按钮
+     * 步骤4：点击聊天界面底部的「+」按钮
      */
     private fun handleClickPlus(root: AccessibilityNodeInfo) {
-        val plusBtn = findClickableByDescription(root, "更多功能按钮，已折叠")
-            ?: findClickableByDescription(root, "更多功能按钮")
-            ?: findClickableByDescription(root, "更多功能")
-            ?: findClickableByDescription(root, "添加")
-            ?: findClickableByDescription(root, "More")
+        // 方式1：按描述找
+        var plusBtn = findByDescription(root, "更多功能按钮")
+            ?: findByDescription(root, "切换到按住说话")  // 有时候这个在附近
+            ?: findByDescription(root, "更多功能")
 
         if (plusBtn != null) {
-            tip("步骤4/5：点击「+」展开功能")
-            plusBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            tip("步骤4/5：点击 + 展开功能")
+            val clickable = if (plusBtn.isClickable) plusBtn else findClickableParent(plusBtn) ?: plusBtn
+            clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             currentStep = Step.CLICK_VIDEO_CALL
             retryCount = 0
             handler.postDelayed({ processCurrentStep() }, 1500)
-        } else {
-            if (retryCount == 3) {
-                val descs = collectDescriptions(root)
-                tip("未找到+按钮，界面元素: $descs")
-            }
-            scheduleRetry("找不到 + 按钮")
+            return
         }
+
+        // 方式2：找聊天底部输入栏右侧的 + 按钮（按位置）
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+        val bottomClickables = mutableListOf<Pair<AccessibilityNodeInfo, Rect>>()
+        traverseAll(root) { node ->
+            if (node.isClickable) {
+                val rect = Rect()
+                node.getBoundsInScreen(rect)
+                // 底部区域，输入栏附近
+                if (rect.top > screenHeight * 0.85 && rect.left > screenWidth * 0.7) {
+                    bottomClickables.add(Pair(node, rect))
+                }
+            }
+        }
+
+        if (bottomClickables.isNotEmpty()) {
+            // 最右边的那个通常是 +
+            bottomClickables.sortByDescending { it.second.left }
+            tip("步骤4/5：点击右下角 + 按钮")
+            bottomClickables[0].first.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            currentStep = Step.CLICK_VIDEO_CALL
+            retryCount = 0
+            handler.postDelayed({ processCurrentStep() }, 1500)
+            return
+        }
+
+        if (retryCount == 3) {
+            val descs = collectDescAndTexts(root)
+            tip("找不到+，底部元素: $descs")
+        }
+        scheduleRetry("找不到 + 按钮")
     }
 
     /**
-     * 步骤5：点击「视频通话」
+     * 步骤5：点击功能面板中的「视频通话」
      */
     private fun handleClickVideoCall(root: AccessibilityNodeInfo) {
         val videoBtn = findNodeByText(root, "视频通话")
@@ -184,6 +267,10 @@ class WeChatVideoService : AccessibilityService() {
             retryCount = 0
             handler.postDelayed({ enableSpeaker() }, 3000)
         } else {
+            if (retryCount == 3) {
+                val texts = collectTexts(root)
+                tip("找不到视频通话，面板: $texts")
+            }
             scheduleRetry("找不到「视频通话」")
         }
     }
@@ -213,12 +300,20 @@ class WeChatVideoService : AccessibilityService() {
         }
     }
 
-    /** 按 contentDescription 查找可点击节点 */
-    private fun findClickableByDescription(root: AccessibilityNodeInfo, desc: String): AccessibilityNodeInfo? {
-        val node = traverseFind(root) { n ->
-            n.contentDescription?.toString()?.contains(desc) == true
-        } ?: return null
-        return if (node.isClickable) node else findClickableParent(node)
+    /** 检查节点是否在 EditText 内部 */
+    private fun isInsideEditText(node: AccessibilityNodeInfo): Boolean {
+        var current: AccessibilityNodeInfo? = node
+        var depth = 0
+        while (current != null && depth < 15) {
+            if (current.className?.toString() == "android.widget.EditText") return true
+            current = current.parent
+            depth++
+        }
+        return false
+    }
+
+    private fun findByDescription(root: AccessibilityNodeInfo, desc: String): AccessibilityNodeInfo? {
+        return traverseFind(root) { it.contentDescription?.toString()?.contains(desc) == true }
     }
 
     private fun findNodeByText(root: AccessibilityNodeInfo, text: String): AccessibilityNodeInfo? {
@@ -240,32 +335,28 @@ class WeChatVideoService : AccessibilityService() {
         return null
     }
 
-    /** 找右上角可点击的图标 */
-    private fun findTopRightClickable(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        val screenWidth = resources.displayMetrics.widthPixels
-        var result: AccessibilityNodeInfo? = null
+    private fun collectTexts(root: AccessibilityNodeInfo): String {
+        val texts = mutableListOf<String>()
         traverseAll(root) { node ->
-            val rect = android.graphics.Rect()
-            node.getBoundsInScreen(rect)
-            if (rect.left > screenWidth * 0.7 && rect.top < 200 && node.isClickable) {
-                val cn = node.className?.toString() ?: ""
-                if (cn.contains("ImageView") || cn.contains("ImageButton")) {
-                    result = node
-                }
+            node.text?.toString()?.let {
+                if (it.isNotBlank() && it.length < 20) texts.add(it)
             }
         }
-        return result
+        return texts.take(8).joinToString(", ")
     }
 
-    /** 收集界面上有效描述信息（调试用，只在找不到按钮时显示一次） */
-    private fun collectDescriptions(root: AccessibilityNodeInfo): String {
-        val descs = mutableListOf<String>()
+    private fun collectDescAndTexts(root: AccessibilityNodeInfo): String {
+        val items = mutableListOf<String>()
+        val screenHeight = resources.displayMetrics.heightPixels
         traverseAll(root) { node ->
-            node.contentDescription?.toString()?.let {
-                if (it.isNotBlank() && it.length < 30) descs.add(it)
+            val rect = Rect()
+            node.getBoundsInScreen(rect)
+            if (rect.top > screenHeight * 0.6) {
+                node.text?.toString()?.let { if (it.isNotBlank() && it.length < 20) items.add(it) }
+                node.contentDescription?.toString()?.let { if (it.isNotBlank() && it.length < 20) items.add("d:$it") }
             }
         }
-        return descs.take(10).joinToString(", ")
+        return items.take(10).joinToString(", ")
     }
 
     private fun traverseFind(node: AccessibilityNodeInfo, predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
