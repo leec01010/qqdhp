@@ -43,6 +43,82 @@ class WeChatVideoService : AccessibilityService() {
 
         /** 由 ContactDetailActivity 设置为 true 来触发流程启动 */
         var pendingStart = false
+
+        /** 服务实例引用（用于录制时执行前置步骤） */
+        private var instance: WeChatVideoService? = null
+
+        /**
+         * 执行单次坐标点击（供 FlowEditorActivity 录制前置步骤使用）
+         */
+        fun executeSingleTap(x: Float, y: Float) {
+            val svc = instance ?: return
+            val path = android.graphics.Path().apply { moveTo(x, y) }
+            val gesture = android.accessibilityservice.GestureDescription.Builder()
+                .addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 100))
+                .build()
+            svc.dispatchGesture(gesture, null, null)
+            android.util.Log.d(TAG, "录制前置 TAP: ($x, $y)")
+        }
+
+        /**
+         * 在当前焦点的编辑框中输入文字（录制前置 INPUT 步骤）
+         */
+        fun executeTestInput(text: String) {
+            val svc = instance ?: return
+            val root = svc.rootInActiveWindow ?: return
+            // 查找 EditText
+            val editNodes = root.findAccessibilityNodeInfosByViewId("com.tencent.mm:id/cd7")
+            val editNode = if (editNodes.isNullOrEmpty()) {
+                // 备用：查找所有 EditText 类型节点
+                findEditText(root)
+            } else {
+                editNodes[0]
+            }
+            editNode?.let {
+                val args = android.os.Bundle()
+                args.putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+                it.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                android.util.Log.d(TAG, "录制前置 INPUT: $text")
+            }
+        }
+
+        /**
+         * 通过文字查找节点并点击（录制前置 FIND_TAP 步骤）
+         */
+        fun executeTestFindTap(text: String) {
+            val svc = instance ?: return
+            val root = svc.rootInActiveWindow ?: return
+            val nodes = root.findAccessibilityNodeInfosByText(text)
+            if (!nodes.isNullOrEmpty()) {
+                for (node in nodes) {
+                    if (node.isClickable) {
+                        node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                        android.util.Log.d(TAG, "录制前置 FIND_TAP 点击: $text")
+                        return
+                    }
+                    // 往上找可点击的父节点
+                    var parent = node.parent
+                    while (parent != null) {
+                        if (parent.isClickable) {
+                            parent.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                            android.util.Log.d(TAG, "录制前置 FIND_TAP 点击父节点: $text")
+                            return
+                        }
+                        parent = parent.parent
+                    }
+                }
+            }
+        }
+
+        private fun findEditText(node: android.view.accessibility.AccessibilityNodeInfo): android.view.accessibility.AccessibilityNodeInfo? {
+            if (node.className?.toString() == "android.widget.EditText") return node
+            for (i in 0 until node.childCount) {
+                val child = node.getChild(i) ?: continue
+                val result = findEditText(child)
+                if (result != null) return result
+            }
+            return null
+        }
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -58,6 +134,7 @@ class WeChatVideoService : AccessibilityService() {
     }
 
     override fun onServiceConnected() {
+        instance = this
         tip("电话铺：无障碍服务已启动")
         val info = AccessibilityServiceInfo().apply {
             eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
@@ -69,6 +146,11 @@ class WeChatVideoService : AccessibilityService() {
                     AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
         }
         serviceInfo = info
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        instance = null
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {

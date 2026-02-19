@@ -21,7 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.family.dialer.data.Contact
-import com.family.dialer.flow.FlowEditorActivity
+
 
 class ContactDetailActivity : AppCompatActivity() {
 
@@ -31,7 +31,6 @@ class ContactDetailActivity : AppCompatActivity() {
     private lateinit var tvWechat: TextView
     private lateinit var btnCall: Button
     private lateinit var btnWechatVideo: Button
-    private lateinit var btnFlowSettings: Button
 
     private var contact: Contact? = null
     private val CALL_PERMISSION_CODE = 200
@@ -46,7 +45,6 @@ class ContactDetailActivity : AppCompatActivity() {
         tvWechat = findViewById(R.id.tvWechat)
         btnCall = findViewById(R.id.btnCall)
         btnWechatVideo = findViewById(R.id.btnWechatVideo)
-        btnFlowSettings = findViewById(R.id.btnFlowSettings)
 
         findViewById<Button>(R.id.btnBack).setOnClickListener { finish() }
 
@@ -64,10 +62,6 @@ class ContactDetailActivity : AppCompatActivity() {
 
         btnWechatVideo.setOnClickListener {
             contact?.let { startWeChatVideo(it) }
-        }
-
-        btnFlowSettings.setOnClickListener {
-            startActivity(Intent(this, FlowEditorActivity::class.java))
         }
     }
 

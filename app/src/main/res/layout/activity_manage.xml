@@ -61,6 +61,18 @@
         android:padding="@dimen/spacing_medium"
         android:background="@color/surface" />
 
+    <!-- 设置微信流程入口 -->
+    <Button
+        android:id="@+id/btnFlowSettings"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="8dp"
+        android:text="⚙ 设置微信拨打流程"
+        android:textSize="14sp"
+        style="@style/Widget.Material3.Button.OutlinedButton" />
+
     <!-- 联系人列表 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerManage"

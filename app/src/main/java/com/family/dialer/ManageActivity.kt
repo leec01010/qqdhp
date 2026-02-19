@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.family.dialer.adapter.ContactManageAdapter
 import com.family.dialer.data.Contact
+import com.family.dialer.flow.FlowEditorActivity
 
 class ManageActivity : AppCompatActivity() {
 
@@ -63,6 +64,11 @@ class ManageActivity : AppCompatActivity() {
         // 从手机导入联系人
         btnImport.setOnClickListener {
             requestImportContacts()
+        }
+
+        // 设置微信拨打流程
+        findViewById<Button>(R.id.btnFlowSettings).setOnClickListener {
+            startActivity(Intent(this, FlowEditorActivity::class.java))
         }
     }
 
