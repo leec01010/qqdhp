@@ -64,17 +64,71 @@ class WeChatVideoService : AccessibilityService() {
 
         /**
          * 执行粘贴操作（录制前置 PASTE 步骤）
-         * 前提：调用方已将文字复制到剪贴板
+         * 方案：长按搜索框 → 等待弹出菜单 → 点击「粘贴」
          */
         fun executePaste() {
             val svc = instance ?: return
             val root = svc.rootInActiveWindow ?: return
             val editNode = findEditText(root)
-            editNode?.let {
-                it.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS)
-                it.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_PASTE)
-                android.util.Log.d(TAG, "录制前置 PASTE 完成")
+            if (editNode == null) {
+                android.util.Log.w(TAG, "executePaste: 找不到 EditText")
+                return
             }
+
+            // 先聚焦
+            editNode.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS)
+
+            // 获取 EditText 的屏幕位置，长按它
+            val rect = android.graphics.Rect()
+            editNode.getBoundsInScreen(rect)
+            val cx = rect.centerX().toFloat()
+            val cy = rect.centerY().toFloat()
+
+            val path = android.graphics.Path().apply { moveTo(cx, cy) }
+            val gesture = android.accessibilityservice.GestureDescription.Builder()
+                .addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 800))
+                .build()
+            svc.dispatchGesture(gesture, object : android.accessibilityservice.AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: android.accessibilityservice.GestureDescription?) {
+                    android.util.Log.d(TAG, "长按完成，等待粘贴菜单")
+                    // 等待菜单弹出后点击「粘贴」
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        clickPasteMenu()
+                    }, 500)
+                }
+            }, null)
+        }
+
+        /** 在弹出菜单中查找并点击「粘贴」 */
+        private fun clickPasteMenu() {
+            val svc = instance ?: return
+            val root = svc.rootInActiveWindow ?: return
+            val nodes = root.findAccessibilityNodeInfosByText("粘贴")
+            if (!nodes.isNullOrEmpty()) {
+                for (node in nodes) {
+                    // 确保是粘贴菜单项（不是其他文本）
+                    val text = node.text?.toString() ?: ""
+                    if (text == "粘贴" || text.contains("粘贴")) {
+                        if (node.isClickable) {
+                            node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                            android.util.Log.d(TAG, "点击粘贴菜单成功")
+                            return
+                        }
+                        var parent = node.parent
+                        var depth = 0
+                        while (parent != null && depth < 5) {
+                            if (parent.isClickable) {
+                                parent.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                                android.util.Log.d(TAG, "点击粘贴菜单父节点成功")
+                                return
+                            }
+                            parent = parent.parent
+                            depth++
+                        }
+                    }
+                }
+            }
+            android.util.Log.w(TAG, "未找到粘贴菜单")
         }
 
         /**
@@ -259,29 +313,71 @@ class WeChatVideoService : AccessibilityService() {
     }
 
     /**
-     * PASTE 步骤：找到 EditText 并从剪贴板粘贴联系人名
+     * PASTE 步骤：长按搜索框 → 点击弹出菜单中的「粘贴」
      * 前提：startFlow() 中已将 targetWechatName 复制到剪贴板
      */
     private fun executePasteStep(step: FlowStep, root: AccessibilityNodeInfo) {
         val editText = findNodeByClassName(root, "android.widget.EditText")
-        if (editText != null) {
-            editText.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-
-            tip("步骤${currentStepIndex + 1}/${flowSteps.size}：粘贴联系人名")
-            editText.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-            Log.d(TAG, "PASTE 粘贴完成")
-            advanceToNextStep(step)
-        } else {
+        if (editText == null) {
             scheduleRetry("搜索框还没出现")
+            return
         }
+
+        editText.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+        tip("步骤${currentStepIndex + 1}/${flowSteps.size}：粘贴联系人名")
+
+        // 获取 EditText 屏幕坐标，长按
+        val rect = android.graphics.Rect()
+        editText.getBoundsInScreen(rect)
+        val cx = rect.centerX().toFloat()
+        val cy = rect.centerY().toFloat()
+
+        val path = Path().apply { moveTo(cx, cy) }
+        // 长按 800ms 触发粘贴菜单
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 800))
+            .build()
+
+        dispatchGesture(gesture, object : GestureResultCallback() {
+            override fun onCompleted(gestureDescription: GestureDescription?) {
+                Log.d(TAG, "PASTE 长按完成，等待粘贴菜单")
+                // 等待菜单弹出
+                handler.postDelayed({
+                    val r = rootInActiveWindow
+                    if (r != null) {
+                        val pasteNodes = r.findAccessibilityNodeInfosByText("粘贴")
+                        if (!pasteNodes.isNullOrEmpty()) {
+                            for (node in pasteNodes) {
+                                val text = node.text?.toString() ?: ""
+                                if (text == "粘贴" || text.contains("粘贴")) {
+                                    val clickable = findClickableParent(node) ?: node
+                                    clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                                    Log.d(TAG, "点击粘贴菜单成功")
+                                    advanceToNextStep(step)
+                                    return@postDelayed
+                                }
+                            }
+                        }
+                        Log.w(TAG, "未找到粘贴菜单，重试")
+                        scheduleRetry("粘贴菜单未弹出")
+                    } else {
+                        scheduleRetry("界面未就绪")
+                    }
+                }, 600)
+            }
+
+            override fun onCancelled(gestureDescription: GestureDescription?) {
+                Log.w(TAG, "PASTE 长按被取消")
+                scheduleRetry("长按被取消")
+            }
+        }, null)
     }
 
     /**
      * FIND_TAP 步骤：按文字查找节点并点击
-     * 对于 select_contact 步骤，使用 targetWechatName 作为查找文字
+     * 对于 select_contact 步骤，使用精确匹配（避免「最常使用」冒充）
      */
     private fun executeFindTapStep(step: FlowStep, root: AccessibilityNodeInfo) {
-        // 确定查找文字
         val searchText = if (step.id == "select_contact") {
             targetWechatName ?: ""
         } else {
@@ -304,9 +400,16 @@ class WeChatVideoService : AccessibilityService() {
             return
         }
 
-        // 对于 select_contact，排除 EditText 中的匹配
         val targetNode = if (step.id == "select_contact") {
-            nodes.firstOrNull { !isInsideEditText(it) }
+            // 精确匹配：只匹配 text 完全等于 searchText 的节点
+            // 并排除 EditText 内的匹配和「最常使用」区域的匹配
+            nodes.firstOrNull { node ->
+                val nodeText = node.text?.toString() ?: ""
+                nodeText == searchText && !isInsideEditText(node)
+            } ?: nodes.firstOrNull { node ->
+                // 如果找不到完全匹配，在「联系人」分组下找含有 searchText 的
+                !isInsideEditText(node) && isUnderContactSection(node, root)
+            }
         } else {
             nodes.firstOrNull()
         }
@@ -320,6 +423,29 @@ class WeChatVideoService : AccessibilityService() {
         val clickable = findClickableParent(targetNode) ?: targetNode
         clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
         advanceToNextStep(step)
+    }
+
+    /**
+     * 检查节点是否在「联系人」分组下（而不是「最常使用」分组）
+     * 通过检查同层级是否有「联系人」标题来判断
+     */
+    private fun isUnderContactSection(node: AccessibilityNodeInfo, root: AccessibilityNodeInfo): Boolean {
+        // 查找「联系人」和「最常使用」标题节点
+        val contactHeaders = root.findAccessibilityNodeInfosByText("联系人")
+        val frequentHeaders = root.findAccessibilityNodeInfosByText("最常使用")
+
+        if (contactHeaders.isNullOrEmpty()) return false
+
+        // 获取节点的 Y 坐标
+        val nodeRect = android.graphics.Rect()
+        node.getBoundsInScreen(nodeRect)
+
+        val contactRect = android.graphics.Rect()
+        contactHeaders[0].getBoundsInScreen(contactRect)
+
+        // 如果有「最常使用」标题，节点应该在「联系人」标题之下
+        // 即节点的 Y 坐标大于「联系人」标题的 Y 坐标
+        return nodeRect.top > contactRect.top
     }
 
     /** 推进到下一步 */
