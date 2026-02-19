@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.family.dialer.data.Contact
+import com.family.dialer.flow.FlowEditorActivity
 
 class ContactDetailActivity : AppCompatActivity() {
 
@@ -30,6 +31,7 @@ class ContactDetailActivity : AppCompatActivity() {
     private lateinit var tvWechat: TextView
     private lateinit var btnCall: Button
     private lateinit var btnWechatVideo: Button
+    private lateinit var btnFlowSettings: Button
 
     private var contact: Contact? = null
     private val CALL_PERMISSION_CODE = 200
@@ -44,6 +46,7 @@ class ContactDetailActivity : AppCompatActivity() {
         tvWechat = findViewById(R.id.tvWechat)
         btnCall = findViewById(R.id.btnCall)
         btnWechatVideo = findViewById(R.id.btnWechatVideo)
+        btnFlowSettings = findViewById(R.id.btnFlowSettings)
 
         findViewById<Button>(R.id.btnBack).setOnClickListener { finish() }
 
@@ -61,6 +64,10 @@ class ContactDetailActivity : AppCompatActivity() {
 
         btnWechatVideo.setOnClickListener {
             contact?.let { startWeChatVideo(it) }
+        }
+
+        btnFlowSettings.setOnClickListener {
+            startActivity(Intent(this, FlowEditorActivity::class.java))
         }
     }
 
@@ -197,13 +204,18 @@ class ContactDetailActivity : AppCompatActivity() {
 
         // 设置目标并启动微信
         WeChatVideoService.targetWechatName = wechatName
-        WeChatVideoService.currentStep = WeChatVideoService.Step.OPEN_WECHAT
 
         val launchIntent = packageManager.getLaunchIntentForPackage("com.tencent.mm")
         launchIntent?.let {
             it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             startActivity(it)
             Toast.makeText(this, "正在打开微信，自动搜索「$wechatName」...", Toast.LENGTH_LONG).show()
+
+            // 延迟启动流程引擎（等待微信打开）
+            Handler(Looper.getMainLooper()).postDelayed({
+                // 通过静态方式触发服务开始流程
+                WeChatVideoService.pendingStart = true
+            }, 500)
         }
     }
 

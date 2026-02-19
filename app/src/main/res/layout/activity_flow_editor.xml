@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+    <!-- 顶部栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/primary"
+        android:gravity="center_vertical"
+        android:padding="@dimen/spacing_medium">
+
+        <Button
+            android:id="@+id/btnBack"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="返回"
+            android:textSize="16sp"
+            android:textColor="@color/on_primary"
+            android:backgroundTint="@color/primary_dark"
+            style="@style/Widget.Material3.Button.TextButton" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="流程设置"
+            android:textSize="20sp"
+            android:textColor="@color/on_primary"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <!-- 占位，保持标题居中 -->
+        <View
+            android:layout_width="48dp"
+            android:layout_height="0dp" />
+    </LinearLayout>
+
+    <!-- 说明文字 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:text="以下是微信视频拨打的完整流程。\n带 ✏ 标记的步骤可以自定义。点击「录制坐标」按钮来适配您的微信版本。"
+        android:textSize="14sp"
+        android:textColor="@color/on_surface_secondary"
+        android:lineSpacingExtra="4dp" />
+
+    <!-- 步骤列表 -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerSteps"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:padding="8dp" />
+
+    <!-- 底部按钮 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/btnReset"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="恢复默认"
+            android:textSize="16sp"
+            style="@style/Widget.Material3.Button.OutlinedButton" />
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="保存配置"
+            android:textSize="16sp"
+            android:backgroundTint="@color/primary"
+            style="@style/Widget.Material3.Button" />
+    </LinearLayout>
+</LinearLayout>

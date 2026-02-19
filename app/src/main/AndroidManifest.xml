@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- Android 11+ 需要声明才能检测微信是否安装 -->
     <queries>
@@ -41,6 +42,10 @@
             android:name=".AddEditContactActivity"
             android:screenOrientation="portrait" />
 
+        <activity
+            android:name=".flow.FlowEditorActivity"
+            android:screenOrientation="portrait" />
+
         <!-- 微信视频无障碍服务 -->
         <service
             android:name=".WeChatVideoService"
@@ -53,6 +58,11 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
+
+        <!-- 浮窗坐标录制服务 -->
+        <service
+            android:name=".flow.FlowRecordOverlayService"
+            android:exported="false" />
 
     </application>
 

@@ -111,6 +111,16 @@
                     android:backgroundTint="#07C160"
                     style="@style/Widget.Material3.Button" />
 
+                <!-- 设置流程 -->
+                <Button
+                    android:id="@+id/btnFlowSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="12dp"
+                    android:text="⚙ 设置微信拨打流程"
+                    android:textSize="14sp"
+                    style="@style/Widget.Material3.Button.OutlinedButton" />
+
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
