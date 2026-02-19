@@ -1,6 +1,8 @@
 package com.family.dialer.flow
 
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -103,7 +105,7 @@ class FlowEditorActivity : AppCompatActivity() {
         if (!Settings.canDrawOverlays(this)) {
             AlertDialog.Builder(this)
                 .setTitle("需要悬浮窗权限")
-                .setMessage("录制坐标需要悬浮窗权限。\n\n请在设置中允许「电话铺」显示在其他应用上方。")
+                .setMessage("录制坐标需要悬浮窗权限。\n\n请在设置中允许显示在其他应用上方。")
                 .setPositiveButton("去设置") { _, _ ->
                     startActivity(Intent(
                         Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -119,43 +121,43 @@ class FlowEditorActivity : AppCompatActivity() {
         val stepIndex = allSteps.indexOfFirst { it.id == step.id }
         if (stepIndex < 0) return
 
-        // 检查前面是否有 INPUT 步骤，如果有则需要测试联系人
-        val needsTestContact = (0 until stepIndex).any { allSteps[it].type == StepType.INPUT }
+        // 检查是否有 PASTE 前置步骤 → 需要测试联系人
+        val needsTestContact = (0 until stepIndex).any { allSteps[it].type == StepType.PASTE }
         val testName = etTestContact.text.toString().trim()
 
         if (needsTestContact && testName.isEmpty()) {
-            Toast.makeText(this, "请先填写「测试联系人」，用于自动执行前面的搜索步骤", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "请先填写「测试联系人」", Toast.LENGTH_LONG).show()
             etTestContact.requestFocus()
             return
         }
 
         recordingStepId = step.id
 
-        // 收集前置步骤（index 1 到 targetIndex-1，跳过 LAUNCH 和 DELAY）
-        val preSteps = mutableListOf<FlowStep>()
-        for (i in 1 until stepIndex) {
-            val s = allSteps[i]
-            if (s.type != StepType.LAUNCH && s.type != StepType.DELAY) {
-                preSteps.add(s)
-            }
-        }
+        // 如果有前置步骤需要执行
+        val hasLaunchBefore = (0 until stepIndex).any { allSteps[it].type == StepType.LAUNCH }
 
-        if (preSteps.isEmpty()) {
-            // 没有前置步骤（比如第一个 TAP），直接打开微信后启动浮窗
-            val hasLaunch = (0 until stepIndex).any { allSteps[it].type == StepType.LAUNCH }
-            if (hasLaunch) {
-                launchWeChat()
-                handler.postDelayed({ launchOverlay(step) }, allSteps[0].delayMs)
-            } else {
-                launchOverlay(step)
-            }
+        if (!hasLaunchBefore || stepIndex == 0) {
+            // 没有前置步骤（或者是第一步），直接启动浮窗
+            launchOverlay(step)
             return
         }
 
-        // 有前置步骤：先打开微信，等待后逐步执行
+        // 先复制测试联系人到剪贴板（如果需要）
+        if (testName.isNotEmpty()) {
+            copyToClipboard(testName)
+        }
+
+        // 打开微信
         launchWeChat()
         Toast.makeText(this, "正在自动执行前置步骤...", Toast.LENGTH_SHORT).show()
 
+        // 收集前置步骤（跳过 LAUNCH）
+        val preSteps = mutableListOf<FlowStep>()
+        for (i in 1 until stepIndex) {
+            preSteps.add(allSteps[i])
+        }
+
+        // 等微信启动后执行
         handler.postDelayed({
             runPreStepChain(preSteps, 0, step, testName)
         }, allSteps[0].delayMs)
@@ -171,8 +173,8 @@ class FlowEditorActivity : AppCompatActivity() {
         testName: String
     ) {
         if (index >= preSteps.size) {
-            // 前置步骤全部执行完毕，启动浮窗录制
-            handler.postDelayed({ launchOverlay(targetStep) }, 1500)
+            // 前置步骤全部完成 → 启动浮窗（阶段一：确认按钮）
+            handler.postDelayed({ launchOverlay(targetStep) }, 1000)
             return
         }
 
@@ -187,20 +189,27 @@ class FlowEditorActivity : AppCompatActivity() {
                     WeChatVideoService.executeSingleTap(x, y)
                 }
             }
-            StepType.INPUT -> {
-                WeChatVideoService.executeTestInput(testName)
+            StepType.PASTE -> {
+                // 粘贴：通过无障碍服务执行粘贴操作
+                WeChatVideoService.executePaste()
             }
             StepType.FIND_TAP -> {
                 val text = if (step.findText.isNullOrEmpty()) testName else step.findText
                 WeChatVideoService.executeTestFindTap(text)
             }
-            else -> { /* skip */ }
+            else -> { /* LAUNCH, DELAY: skip */ }
         }
 
-        // 等待当前步骤完成后执行下一步
         handler.postDelayed({
             runPreStepChain(preSteps, index + 1, targetStep, testName)
         }, step.delayMs)
+    }
+
+    /** 复制文字到剪贴板 */
+    private fun copyToClipboard(text: String) {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("contact_name", text)
+        clipboard.setPrimaryClip(clip)
     }
 
     private fun launchWeChat() {

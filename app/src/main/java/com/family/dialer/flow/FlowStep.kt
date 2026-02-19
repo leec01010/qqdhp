@@ -8,8 +8,8 @@ enum class StepType {
     LAUNCH,
     /** 按坐标点击屏幕（用户可录制） */
     TAP,
-    /** 自动输入文字（App 填入联系人备注名） */
-    INPUT,
+    /** 从剪贴板粘贴文字（联系人备注名） */
+    PASTE,
     /** 按文字查找并点击 */
     FIND_TAP,
     /** 等待 */

@@ -6,9 +6,7 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -17,12 +15,10 @@ import android.widget.FrameLayout
 import android.widget.TextView
 
 /**
- * 浮窗坐标录制服务
+ * 浮窗坐标录制服务 —— 两阶段模式
  *
- * 改进版：
- * 1. 只在顶部显示一个小型悬浮提示条（不遮挡操作区域）
- * 2. 全屏透明触摸层捕获点击坐标
- * 3. 提示条可拖动，避免遮挡目标按钮
+ * 阶段一：显示「开始录制」按钮（用户确认已到达目标页面后点击）
+ * 阶段二：全屏透明触摸层捕获点击坐标
  */
 class FlowRecordOverlayService : Service() {
 
@@ -32,16 +28,17 @@ class FlowRecordOverlayService : Service() {
     }
 
     private lateinit var windowManager: WindowManager
+    private var confirmView: View? = null
     private var touchLayer: View? = null
     private var hintView: View? = null
     private var stepId: String = ""
-    private val handler = Handler(Looper.getMainLooper())
+    private var stepLabel: String = ""
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         stepId = intent?.getStringExtra(EXTRA_STEP_ID) ?: ""
-        val stepLabel = intent?.getStringExtra(EXTRA_STEP_LABEL) ?: ""
+        stepLabel = intent?.getStringExtra(EXTRA_STEP_LABEL) ?: ""
 
         if (stepId.isEmpty()) {
             stopSelf()
@@ -52,6 +49,16 @@ class FlowRecordOverlayService : Service() {
 
         removeAll()
 
+        // ========== 阶段一：显示确认按钮 ==========
+        showConfirmButton()
+
+        return START_NOT_STICKY
+    }
+
+    /**
+     * 阶段一：显示「开始录制」确认按钮
+     */
+    private fun showConfirmButton() {
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         } else {
@@ -59,9 +66,61 @@ class FlowRecordOverlayService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        // ========== 1. 全屏透明触摸层（捕获点击坐标） ==========
+        val btn = TextView(this).apply {
+            text = "✅ 前置步骤完成\n点击这里开始录制「$stepLabel」"
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            setPadding(48, 32, 48, 32)
+            gravity = Gravity.CENTER
+
+            val bg = GradientDrawable().apply {
+                setColor(Color.parseColor("#DD1976D2"))
+                cornerRadius = 24f
+            }
+            background = bg
+
+            setOnClickListener {
+                // 移除确认按钮，进入阶段二
+                removeConfirmView()
+                showRecordingLayer()
+            }
+        }
+
+        // 长按取消
+        btn.setOnLongClickListener {
+            removeAll()
+            stopSelf()
+            true
+        }
+
+        confirmView = btn
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            layoutType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.CENTER
+        }
+
+        windowManager.addView(confirmView, params)
+    }
+
+    /**
+     * 阶段二：全屏透明触摸层 + 小型提示条
+     */
+    private fun showRecordingLayer() {
+        val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+
+        // 全屏透明触摸层
         val touchView = FrameLayout(this)
-        // 完全透明，用户看不到
         touchView.setBackgroundColor(Color.TRANSPARENT)
 
         touchView.setOnTouchListener { _, event ->
@@ -73,13 +132,11 @@ class FlowRecordOverlayService : Service() {
                 val xPercent = rawX / dm.widthPixels
                 val yPercent = rawY / dm.heightPixels
 
-                // 保存到 FlowConfig
                 FlowConfig.updateStepPosition(
                     this@FlowRecordOverlayService,
                     stepId, xPercent, yPercent
                 )
 
-                // 发送广播通知 FlowEditorActivity
                 val resultIntent = Intent(FlowEditorActivity.ACTION_POSITION_RECORDED).apply {
                     setPackage(packageName)
                     putExtra(FlowEditorActivity.EXTRA_STEP_ID, stepId)
@@ -110,9 +167,9 @@ class FlowRecordOverlayService : Service() {
 
         windowManager.addView(touchLayer, touchParams)
 
-        // ========== 2. 小型悬浮提示条（可拖动） ==========
+        // 小型提示条（可拖动）
         val hint = TextView(this).apply {
-            text = "📍 请点击「$stepLabel」的位置"
+            text = "📍 请点击「$stepLabel」的位置 | 长按取消"
             textSize = 13f
             setTextColor(Color.WHITE)
             setPadding(32, 16, 32, 16)
@@ -125,9 +182,6 @@ class FlowRecordOverlayService : Service() {
             background = bg
         }
 
-        // 支持拖动提示条
-        var lastX = 0f
-        var lastY = 0f
         val hintParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -137,9 +191,12 @@ class FlowRecordOverlayService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = 100  // 距顶部约100px
+            y = 100
         }
 
+        // 拖动
+        var lastX = 0f
+        var lastY = 0f
         hint.setOnTouchListener { v, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -161,7 +218,6 @@ class FlowRecordOverlayService : Service() {
             }
         }
 
-        // 长按提示条取消录制
         hint.setOnLongClickListener {
             removeAll()
             stopSelf()
@@ -170,21 +226,21 @@ class FlowRecordOverlayService : Service() {
 
         hintView = hint
         windowManager.addView(hintView, hintParams)
+    }
 
-        // 3秒后自动淡化提示条（降低存在感）
-        handler.postDelayed({
-            hintView?.alpha = 0.5f
-        }, 3000)
-
-        return START_NOT_STICKY
+    private fun removeConfirmView() {
+        confirmView?.let {
+            try { windowManager.removeView(it) } catch (_: Exception) {}
+        }
+        confirmView = null
     }
 
     private fun removeAll() {
+        removeConfirmView()
         touchLayer?.let {
             try { windowManager.removeView(it) } catch (_: Exception) {}
         }
         touchLayer = null
-
         hintView?.let {
             try { windowManager.removeView(it) } catch (_: Exception) {}
         }

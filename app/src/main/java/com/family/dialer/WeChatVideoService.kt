@@ -3,6 +3,8 @@ package com.family.dialer
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Path
 import android.media.AudioManager
@@ -22,7 +24,7 @@ import com.family.dialer.flow.StepType
  *
  * 根据 FlowConfig 中保存的流程（用户可自定义坐标）逐步执行：
  * - TAP 步骤：使用 dispatchGesture() 在指定百分比坐标处点击
- * - INPUT 步骤：使用 AccessibilityNodeInfo 的 ACTION_SET_TEXT
+ * - PASTE 步骤：从剪贴板粘贴联系人名（先复制到剪贴板再 ACTION_PASTE）
  * - FIND_TAP 步骤：按文字查找节点并点击
  * - LAUNCH 步骤：启动 App（由调用方处理）
  * - DELAY 步骤：纯等待
@@ -61,24 +63,17 @@ class WeChatVideoService : AccessibilityService() {
         }
 
         /**
-         * 在当前焦点的编辑框中输入文字（录制前置 INPUT 步骤）
+         * 执行粘贴操作（录制前置 PASTE 步骤）
+         * 前提：调用方已将文字复制到剪贴板
          */
-        fun executeTestInput(text: String) {
+        fun executePaste() {
             val svc = instance ?: return
             val root = svc.rootInActiveWindow ?: return
-            // 查找 EditText
-            val editNodes = root.findAccessibilityNodeInfosByViewId("com.tencent.mm:id/cd7")
-            val editNode = if (editNodes.isNullOrEmpty()) {
-                // 备用：查找所有 EditText 类型节点
-                findEditText(root)
-            } else {
-                editNodes[0]
-            }
+            val editNode = findEditText(root)
             editNode?.let {
-                val args = android.os.Bundle()
-                args.putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
-                it.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                android.util.Log.d(TAG, "录制前置 INPUT: $text")
+                it.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS)
+                it.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_PASTE)
+                android.util.Log.d(TAG, "录制前置 PASTE 完成")
             }
         }
 
@@ -171,6 +166,15 @@ class WeChatVideoService : AccessibilityService() {
     /** 开始执行流程（由外部调用） */
     fun startFlow() {
         flowSteps = FlowConfig.getFlow(this)
+
+        // 先复制联系人名到剪贴板（PASTE 步骤用）
+        if (!targetWechatName.isNullOrBlank()) {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("contact_name", targetWechatName)
+            clipboard.setPrimaryClip(clip)
+            Log.d(TAG, "已复制到剪贴板: $targetWechatName")
+        }
+
         // 跳过第一步 LAUNCH（已由调用方处理）
         currentStepIndex = 1
         isRunning = true
@@ -197,12 +201,12 @@ class WeChatVideoService : AccessibilityService() {
             StepType.TAP -> {
                 executeTapStep(step)
             }
-            StepType.INPUT -> {
+            StepType.PASTE -> {
                 if (root == null) {
                     scheduleRetry("界面未就绪")
                     return
                 }
-                executeInputStep(step, root)
+                executePasteStep(step, root)
             }
             StepType.FIND_TAP -> {
                 if (root == null) {
@@ -255,28 +259,17 @@ class WeChatVideoService : AccessibilityService() {
     }
 
     /**
-     * INPUT 步骤：找到 EditText 并输入联系人备注名
+     * PASTE 步骤：找到 EditText 并从剪贴板粘贴联系人名
+     * 前提：startFlow() 中已将 targetWechatName 复制到剪贴板
      */
-    private fun executeInputStep(step: FlowStep, root: AccessibilityNodeInfo) {
-        val targetName = targetWechatName
-        if (targetName.isNullOrBlank()) {
-            tip("未设置目标联系人")
-            finishFlow()
-            return
-        }
-
+    private fun executePasteStep(step: FlowStep, root: AccessibilityNodeInfo) {
         val editText = findNodeByClassName(root, "android.widget.EditText")
         if (editText != null) {
             editText.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-            editText.performAction(AccessibilityNodeInfo.ACTION_CLICK)
 
-            tip("步骤${currentStepIndex + 1}/${flowSteps.size}：输入「$targetName」")
-            val args = Bundle()
-            args.putCharSequence(
-                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                targetName
-            )
-            editText.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+            tip("步骤${currentStepIndex + 1}/${flowSteps.size}：粘贴联系人名")
+            editText.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+            Log.d(TAG, "PASTE 粘贴完成")
             advanceToNextStep(step)
         } else {
             scheduleRetry("搜索框还没出现")

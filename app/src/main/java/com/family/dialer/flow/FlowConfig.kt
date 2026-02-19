@@ -14,7 +14,7 @@ object FlowConfig {
     private const val PREFS_NAME = "flow_config"
     private const val KEY_FLOW = "flow_steps"
 
-    /** 默认流程模板 */
+    /** 默认流程模板（8 步） */
     val DEFAULT_FLOW: List<FlowStep> = listOf(
         FlowStep(
             id = "launch",
@@ -35,12 +35,22 @@ object FlowConfig {
             hint = "微信主页右上角的放大镜图标"
         ),
         FlowStep(
-            id = "input",
-            label = "输入联系人名称",
-            type = StepType.INPUT,
+            id = "paste",
+            label = "粘贴联系人名",
+            type = StepType.PASTE,
             editable = false,
+            delayMs = 1000,
+            hint = "自动从剪贴板粘贴备注名到搜索框"
+        ),
+        FlowStep(
+            id = "search_btn",
+            label = "点击键盘「搜索」",
+            type = StepType.TAP,
+            editable = true,
+            xPercent = 0.90f,
+            yPercent = 0.96f,
             delayMs = 2000,
-            hint = "自动输入您设置的微信备注名"
+            hint = "键盘右下角的搜索按钮"
         ),
         FlowStep(
             id = "select_contact",
@@ -126,7 +136,7 @@ object FlowConfig {
         prefs(context).edit().remove(KEY_FLOW).apply()
     }
 
-    /** 检查用户是否已配置过流程（至少录制过一次坐标） */
+    /** 检查用户是否已配置过流程 */
     fun isConfigured(context: Context): Boolean {
         return prefs(context).contains(KEY_FLOW)
     }
