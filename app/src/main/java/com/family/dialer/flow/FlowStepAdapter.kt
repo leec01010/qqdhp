@@ -72,8 +72,8 @@ class FlowStepAdapter(
             // 固定步骤降低透明度
             itemView.alpha = if (step.editable) 1.0f else 0.7f
 
-            // TAP 类型：显示坐标信息和录制按钮
-            if (step.type == StepType.TAP) {
+            // TAP / PASTE 类型：显示坐标信息和录制按钮
+            if (step.type == StepType.TAP || step.type == StepType.PASTE) {
                 if (step.xPercent != null && step.yPercent != null) {
                     tvCoordInfo.text = "当前坐标：X=${(step.xPercent * 100).toInt()}%  Y=${(step.yPercent * 100).toInt()}%"
                     tvCoordInfo.visibility = View.VISIBLE

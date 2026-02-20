@@ -119,9 +119,9 @@ class FlowRecordOverlayService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        // 全屏透明触摸层
+        // 全屏半透明灰色触摸层（区分录制模式）
         val touchView = FrameLayout(this)
-        touchView.setBackgroundColor(Color.TRANSPARENT)
+        touchView.setBackgroundColor(Color.parseColor("#4D000000"))  // 30% 黑色遮罩
 
         touchView.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_DOWN) {
