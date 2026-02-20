@@ -67,12 +67,13 @@ object FlowConfig {
         ),
         FlowStep(
             id = "select_contact",
-            label = "点击搜索结果",
-            type = StepType.FIND_TAP,
-            editable = false,
-            findText = "",  // 运行时替换为实际备注名
+            label = "点击搜索结果（第一条）",
+            type = StepType.TAP,
+            editable = true,
+            xPercent = 0.50f,
+            yPercent = 0.18f,
             delayMs = 2000,
-            hint = "自动点击第一个匹配的联系人"
+            hint = "搜索结果列表中第一条联系人"
         ),
         FlowStep(
             id = "plus",
@@ -87,18 +88,20 @@ object FlowConfig {
         FlowStep(
             id = "video_call",
             label = "点击「视频通话」",
-            type = StepType.FIND_TAP,
+            type = StepType.TAP,
             editable = true,
-            findText = "视频通话",
+            xPercent = 0.28f,
+            yPercent = 0.78f,
             delayMs = 1500,
             hint = "功能面板中的视频通话选项"
         ),
         FlowStep(
             id = "confirm",
             label = "确认视频通话",
-            type = StepType.FIND_TAP,
+            type = StepType.TAP,
             editable = true,
-            findText = "视频通话",
+            xPercent = 0.50f,
+            yPercent = 0.65f,
             delayMs = 1000,
             hint = "弹窗中的确认按钮"
         )
