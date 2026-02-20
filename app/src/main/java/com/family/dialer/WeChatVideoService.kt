@@ -6,12 +6,18 @@ import android.accessibilityservice.GestureDescription
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Color
 import android.graphics.Path
+import android.graphics.PixelFormat
 import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
@@ -48,6 +54,9 @@ class WeChatVideoService : AccessibilityService() {
 
         /** 服务实例引用（用于录制时执行前置步骤） */
         private var instance: WeChatVideoService? = null
+
+    /** 流程执行时的灰色遮罩 */
+    private var overlayView: View? = null
 
         /**
          * 执行单次坐标点击（供 FlowEditorActivity 录制前置步骤使用）
@@ -167,6 +176,7 @@ class WeChatVideoService : AccessibilityService() {
         currentStepIndex = 1
         isRunning = true
         retryCount = 0
+        showOverlay()
         Log.d(TAG, "流程开始，共 ${flowSteps.size} 步")
         handler.postDelayed({ processCurrentStep() }, flowSteps[0].delayMs)
     }
@@ -338,7 +348,52 @@ class WeChatVideoService : AccessibilityService() {
     private fun finishFlow() {
         isRunning = false
         currentStepIndex = -1
+        removeOverlay()
         retryCount = 0
+    }
+
+    /** 显示流程执行灰色遮罩（不拦截触摸） */
+    private fun showOverlay() {
+        if (overlayView != null) return
+        val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY
+        }
+
+        val view = View(this)
+        view.setBackgroundColor(Color.parseColor("#4D000000"))  // 30% 黑色遮罩
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            layoutType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.TOP or Gravity.START
+
+        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        wm.addView(view, params)
+        overlayView = view
+        Log.d(TAG, "流程遮罩已显示")
+    }
+
+    /** 移除流程执行灰色遮罩 */
+    private fun removeOverlay() {
+        overlayView?.let {
+            try {
+                val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+                wm.removeView(it)
+            } catch (e: Exception) {
+                Log.w(TAG, "移除遮罩失败: ${e.message}")
+            }
+            overlayView = null
+            Log.d(TAG, "流程遮罩已移除")
+        }
     }
 
     private fun enableSpeaker() {

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.ContactsContract
+import android.provider.Settings
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -68,8 +69,28 @@ class ManageActivity : AppCompatActivity() {
 
         // 设置微信拨打流程
         findViewById<Button>(R.id.btnFlowSettings).setOnClickListener {
-            startActivity(Intent(this, FlowEditorActivity::class.java))
+            if (!isAccessibilityEnabled()) {
+                AlertDialog.Builder(this)
+                    .setTitle("需要无障碍权限")
+                    .setMessage("流程设置和录制需要无障碍服务权限。\n\n请在设置中开启「亲情拨号助手」无障碍服务。")
+                    .setPositiveButton("去设置") { _, _ ->
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    }
+                    .setNegativeButton("取消", null)
+                    .show()
+            } else {
+                startActivity(Intent(this, FlowEditorActivity::class.java))
+            }
         }
+    }
+
+    /** 检查无障碍服务是否已开启 */
+    private fun isAccessibilityEnabled(): Boolean {
+        val serviceName = "$packageName/${WeChatVideoService::class.java.canonicalName}"
+        val enabledServices = Settings.Secure.getString(
+            contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        return enabledServices.contains(serviceName)
     }
 
     private fun showDeleteConfirm(contact: Contact) {

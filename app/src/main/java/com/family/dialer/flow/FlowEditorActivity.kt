@@ -122,6 +122,18 @@ class FlowEditorActivity : AppCompatActivity() {
             return
         }
 
+        if (!isAccessibilityEnabled()) {
+            AlertDialog.Builder(this)
+                .setTitle("需要无障碍权限")
+                .setMessage("录制坐标需要无障碍服务权限。\n\n请在设置中开启「亲情拨号助手」无障碍服务。")
+                .setPositiveButton("去设置") { _, _ ->
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                }
+                .setNegativeButton("取消", null)
+                .show()
+            return
+        }
+
         val allSteps = adapter.getSteps()
         val stepIndex = allSteps.indexOfFirst { it.id == step.id }
         if (stepIndex < 0) return
@@ -233,5 +245,14 @@ class FlowEditorActivity : AppCompatActivity() {
             putExtra(FlowRecordOverlayService.EXTRA_STEP_LABEL, step.label)
         }
         startService(intent)
+    }
+
+    /** 检查无障碍服务是否已开启 */
+    private fun isAccessibilityEnabled(): Boolean {
+        val serviceName = "$packageName/${WeChatVideoService::class.java.canonicalName}"
+        val enabledServices = Settings.Secure.getString(
+            contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        return enabledServices.contains(serviceName)
     }
 }
