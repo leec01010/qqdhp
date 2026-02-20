@@ -170,9 +170,9 @@ class ContactDetailActivity : AppCompatActivity() {
     // ---- 微信视频 ----
 
     private fun startWeChatVideo(c: Contact) {
-        val wechatName = c.wechatName
-        if (wechatName.isNullOrBlank()) {
-            Toast.makeText(this, "请先设置该联系人的微信备注名", Toast.LENGTH_SHORT).show()
+        val phone = c.phone
+        if (phone.isBlank()) {
+            Toast.makeText(this, "该联系人没有手机号", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -197,13 +197,14 @@ class ContactDetailActivity : AppCompatActivity() {
         }
 
         // 设置目标并启动微信
-        WeChatVideoService.targetWechatName = wechatName
+        WeChatVideoService.targetPhone = phone
+        WeChatVideoService.targetWechatName = c.wechatName
 
         val launchIntent = packageManager.getLaunchIntentForPackage("com.tencent.mm")
         launchIntent?.let {
             it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             startActivity(it)
-            Toast.makeText(this, "正在打开微信，自动搜索「$wechatName」...", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "正在打开微信，搜索手机号 $phone ...", Toast.LENGTH_LONG).show()
 
             // 延迟启动流程引擎（等待微信打开）
             Handler(Looper.getMainLooper()).postDelayed({

@@ -43,6 +43,9 @@ class WeChatVideoService : AccessibilityService() {
         /** 要搜索的微信备注名（由 ContactDetailActivity 设置） */
         var targetWechatName: String? = null
 
+        /** 目标联系人手机号（用于添加朋友→手机号搜索） */
+        var targetPhone: String? = null
+
         /** 是否正在执行流程 */
         var isRunning = false
 
@@ -164,12 +167,13 @@ class WeChatVideoService : AccessibilityService() {
     fun startFlow() {
         flowSteps = FlowConfig.getFlow(this)
 
-        // 先复制联系人名到剪贴板（PASTE 步骤用）
-        if (!targetWechatName.isNullOrBlank()) {
+        // 复制手机号到剪贴板（PASTE 步骤用）
+        val clipText = targetPhone ?: targetWechatName ?: ""
+        if (clipText.isNotBlank()) {
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("contact_name", targetWechatName)
+            val clip = ClipData.newPlainText("search_text", clipText)
             clipboard.setPrimaryClip(clip)
-            Log.d(TAG, "已复制到剪贴板: $targetWechatName")
+            Log.d(TAG, "已复制到剪贴板: $clipText")
         }
 
         // 跳过第一步 LAUNCH（已由调用方处理）
@@ -336,7 +340,11 @@ class WeChatVideoService : AccessibilityService() {
         currentStepIndex++
         if (currentStepIndex >= flowSteps.size) {
             // 全部步骤完成
-            tip("🎯 视频通话发起成功！")
+            tip("✅ 流程执行完毕")
+            // 延迟提示：如果未成功可能是非好友
+            handler.postDelayed({
+                tip("如未发起通话，请检查该联系人是否是您的微信好友")
+            }, 5000)
             handler.postDelayed({ enableSpeaker() }, 3000)
             finishFlow()
         } else {

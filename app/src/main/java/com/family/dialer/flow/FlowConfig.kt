@@ -25,7 +25,7 @@ object FlowConfig {
         prefs(context).edit().putString(KEY_TEST_CONTACT, name).apply()
     }
 
-    /** 默认流程模板（8 步） */
+    /** 默认流程模板（9 步 — 添加朋友→手机号搜索） */
     val DEFAULT_FLOW: List<FlowStep> = listOf(
         FlowStep(
             id = "launch",
@@ -36,22 +36,42 @@ object FlowConfig {
             hint = "自动启动微信 App"
         ),
         FlowStep(
-            id = "search",
-            label = "点击搜索按钮 🔍",
+            id = "plus_top",
+            label = "点击右上角 + 号",
             type = StepType.TAP,
             editable = true,
-            xPercent = 0.85f,
+            xPercent = 0.95f,
             yPercent = 0.06f,
-            delayMs = 2500,
-            hint = "微信主页右上角的放大镜图标"
+            delayMs = 1500,
+            hint = "微信主页右上角的 + 按钮"
+        ),
+        FlowStep(
+            id = "add_friend",
+            label = "点击「添加朋友」",
+            type = StepType.TAP,
+            editable = true,
+            xPercent = 0.75f,
+            yPercent = 0.16f,
+            delayMs = 3000,
+            hint = "下拉菜单中的「添加朋友」选项"
+        ),
+        FlowStep(
+            id = "search_box",
+            label = "点击搜索框",
+            type = StepType.TAP,
+            editable = true,
+            xPercent = 0.50f,
+            yPercent = 0.10f,
+            delayMs = 2000,
+            hint = "添加朋友页面顶部的搜索框"
         ),
         FlowStep(
             id = "paste",
-            label = "点击键盘粘贴建议",
+            label = "粘贴手机号",
             type = StepType.PASTE,
             editable = true,
-            xPercent = 0.10f,
-            yPercent = 0.70f,
+            xPercent = 0.50f,
+            yPercent = 0.50f,
             delayMs = 1500,
             hint = "键盘上方的剪贴板粘贴建议（📋图标）"
         ),
@@ -62,48 +82,38 @@ object FlowConfig {
             editable = true,
             xPercent = 0.90f,
             yPercent = 0.96f,
-            delayMs = 2000,
+            delayMs = 2500,
             hint = "键盘右下角的搜索按钮"
         ),
         FlowStep(
-            id = "select_contact",
-            label = "点击搜索结果（第一条）",
+            id = "select_result",
+            label = "点击搜索结果",
             type = StepType.TAP,
             editable = true,
             xPercent = 0.50f,
-            yPercent = 0.18f,
+            yPercent = 0.22f,
             delayMs = 2000,
-            hint = "搜索结果列表中第一条联系人"
-        ),
-        FlowStep(
-            id = "plus",
-            label = "点击 + 按钮",
-            type = StepType.TAP,
-            editable = true,
-            xPercent = 0.92f,
-            yPercent = 0.94f,
-            delayMs = 1500,
-            hint = "聊天页面右下角的 + 按钮"
+            hint = "搜索到的联系人卡片"
         ),
         FlowStep(
             id = "video_call",
-            label = "点击「视频通话」",
-            type = StepType.TAP,
-            editable = true,
-            xPercent = 0.28f,
-            yPercent = 0.78f,
-            delayMs = 1500,
-            hint = "功能面板中的视频通话选项"
-        ),
-        FlowStep(
-            id = "confirm",
-            label = "确认视频通话",
+            label = "点击「音视频通话」",
             type = StepType.TAP,
             editable = true,
             xPercent = 0.50f,
-            yPercent = 0.65f,
+            yPercent = 0.50f,
+            delayMs = 1500,
+            hint = "个人资料页的音视频通话按钮"
+        ),
+        FlowStep(
+            id = "confirm_video",
+            label = "选择「视频通话」",
+            type = StepType.TAP,
+            editable = true,
+            xPercent = 0.50f,
+            yPercent = 0.60f,
             delayMs = 1000,
-            hint = "弹窗中的确认按钮"
+            hint = "弹窗中选择视频通话"
         )
     )
 
