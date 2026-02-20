@@ -62,74 +62,8 @@ class WeChatVideoService : AccessibilityService() {
             android.util.Log.d(TAG, "录制前置 TAP: ($x, $y)")
         }
 
-        /**
-         * 执行粘贴操作（录制前置 PASTE 步骤）
-         * 方案：长按搜索框 → 等待弹出菜单 → 点击「粘贴」
-         */
-        fun executePaste() {
-            val svc = instance ?: return
-            val root = svc.rootInActiveWindow ?: return
-            val editNode = findEditText(root)
-            if (editNode == null) {
-                android.util.Log.w(TAG, "executePaste: 找不到 EditText")
-                return
-            }
-
-            // 先聚焦
-            editNode.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS)
-
-            // 获取 EditText 的屏幕位置，长按它
-            val rect = android.graphics.Rect()
-            editNode.getBoundsInScreen(rect)
-            val cx = rect.centerX().toFloat()
-            val cy = rect.centerY().toFloat()
-
-            val path = android.graphics.Path().apply { moveTo(cx, cy) }
-            val gesture = android.accessibilityservice.GestureDescription.Builder()
-                .addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 800))
-                .build()
-            svc.dispatchGesture(gesture, object : android.accessibilityservice.AccessibilityService.GestureResultCallback() {
-                override fun onCompleted(gestureDescription: android.accessibilityservice.GestureDescription?) {
-                    android.util.Log.d(TAG, "长按完成，等待粘贴菜单")
-                    // 等待菜单弹出后点击「粘贴」
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        clickPasteMenu()
-                    }, 500)
-                }
-            }, null)
-        }
-
-        /** 在弹出菜单中查找并点击「粘贴」 */
-        private fun clickPasteMenu() {
-            val svc = instance ?: return
-            val root = svc.rootInActiveWindow ?: return
-            val nodes = root.findAccessibilityNodeInfosByText("粘贴")
-            if (!nodes.isNullOrEmpty()) {
-                for (node in nodes) {
-                    // 确保是粘贴菜单项（不是其他文本）
-                    val text = node.text?.toString() ?: ""
-                    if (text == "粘贴" || text.contains("粘贴")) {
-                        if (node.isClickable) {
-                            node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
-                            android.util.Log.d(TAG, "点击粘贴菜单成功")
-                            return
-                        }
-                        var parent = node.parent
-                        var depth = 0
-                        while (parent != null && depth < 5) {
-                            if (parent.isClickable) {
-                                parent.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
-                                android.util.Log.d(TAG, "点击粘贴菜单父节点成功")
-                                return
-                            }
-                            parent = parent.parent
-                            depth++
-                        }
-                    }
-                }
-            }
-            android.util.Log.w(TAG, "未找到粘贴菜单")
-        }
+        // PASTE 步骤现在等同于 TAP（用户录制键盘粘贴建议的坐标）
+        // 剪贴板复制在 startFlow() / FlowEditorActivity 中完成
 
         /**
          * 通过文字查找节点并点击（录制前置 FIND_TAP 步骤）
@@ -256,11 +190,8 @@ class WeChatVideoService : AccessibilityService() {
                 executeTapStep(step)
             }
             StepType.PASTE -> {
-                if (root == null) {
-                    scheduleRetry("界面未就绪")
-                    return
-                }
-                executePasteStep(step, root)
+                // PASTE = 自动复制到剪贴板 + 用户录制的坐标点击（键盘粘贴建议）
+                executeTapStep(step)
             }
             StepType.FIND_TAP -> {
                 if (root == null) {
@@ -312,66 +243,7 @@ class WeChatVideoService : AccessibilityService() {
         }, null)
     }
 
-    /**
-     * PASTE 步骤：长按搜索框 → 点击弹出菜单中的「粘贴」
-     * 前提：startFlow() 中已将 targetWechatName 复制到剪贴板
-     */
-    private fun executePasteStep(step: FlowStep, root: AccessibilityNodeInfo) {
-        val editText = findNodeByClassName(root, "android.widget.EditText")
-        if (editText == null) {
-            scheduleRetry("搜索框还没出现")
-            return
-        }
 
-        editText.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-        tip("步骤${currentStepIndex + 1}/${flowSteps.size}：粘贴联系人名")
-
-        // 获取 EditText 屏幕坐标，长按
-        val rect = android.graphics.Rect()
-        editText.getBoundsInScreen(rect)
-        val cx = rect.centerX().toFloat()
-        val cy = rect.centerY().toFloat()
-
-        val path = Path().apply { moveTo(cx, cy) }
-        // 长按 800ms 触发粘贴菜单
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 800))
-            .build()
-
-        dispatchGesture(gesture, object : GestureResultCallback() {
-            override fun onCompleted(gestureDescription: GestureDescription?) {
-                Log.d(TAG, "PASTE 长按完成，等待粘贴菜单")
-                // 等待菜单弹出
-                handler.postDelayed({
-                    val r = rootInActiveWindow
-                    if (r != null) {
-                        val pasteNodes = r.findAccessibilityNodeInfosByText("粘贴")
-                        if (!pasteNodes.isNullOrEmpty()) {
-                            for (node in pasteNodes) {
-                                val text = node.text?.toString() ?: ""
-                                if (text == "粘贴" || text.contains("粘贴")) {
-                                    val clickable = findClickableParent(node) ?: node
-                                    clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                                    Log.d(TAG, "点击粘贴菜单成功")
-                                    advanceToNextStep(step)
-                                    return@postDelayed
-                                }
-                            }
-                        }
-                        Log.w(TAG, "未找到粘贴菜单，重试")
-                        scheduleRetry("粘贴菜单未弹出")
-                    } else {
-                        scheduleRetry("界面未就绪")
-                    }
-                }, 600)
-            }
-
-            override fun onCancelled(gestureDescription: GestureDescription?) {
-                Log.w(TAG, "PASTE 长按被取消")
-                scheduleRetry("长按被取消")
-            }
-        }, null)
-    }
 
     /**
      * FIND_TAP 步骤：按文字查找节点并点击

@@ -190,8 +190,12 @@ class FlowEditorActivity : AppCompatActivity() {
                 }
             }
             StepType.PASTE -> {
-                // 粘贴：通过无障碍服务执行粘贴操作
-                WeChatVideoService.executePaste()
+                // PASTE = 和 TAP 一样的坐标点击（键盘剪贴板建议位置）
+                if (step.xPercent != null && step.yPercent != null) {
+                    val x = (step.xPercent * dm.widthPixels).toFloat()
+                    val y = (step.yPercent * dm.heightPixels).toFloat()
+                    WeChatVideoService.executeSingleTap(x, y)
+                }
             }
             StepType.FIND_TAP -> {
                 val text = if (step.findText.isNullOrEmpty()) testName else step.findText

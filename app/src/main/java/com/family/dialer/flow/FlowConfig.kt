@@ -36,11 +36,13 @@ object FlowConfig {
         ),
         FlowStep(
             id = "paste",
-            label = "粘贴联系人名",
+            label = "点击键盘粘贴建议",
             type = StepType.PASTE,
-            editable = false,
-            delayMs = 1000,
-            hint = "自动从剪贴板粘贴备注名到搜索框"
+            editable = true,
+            xPercent = 0.10f,
+            yPercent = 0.70f,
+            delayMs = 1500,
+            hint = "键盘上方的剪贴板粘贴建议（📋图标）"
         ),
         FlowStep(
             id = "search_btn",
