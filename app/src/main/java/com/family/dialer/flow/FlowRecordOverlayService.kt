@@ -123,33 +123,58 @@ class FlowRecordOverlayService : Service() {
         val touchView = FrameLayout(this)
         touchView.setBackgroundColor(Color.parseColor("#4D000000"))  // 30% 黑色遮罩
 
+        var downX = 0f
+        var downY = 0f
+        var isCancelled = false
+        val moveThreshold = 15f  // 超过 15px 判定为滑动
+
         touchView.setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_DOWN) {
-                val rawX = event.rawX
-                val rawY = event.rawY
-
-                val dm = resources.displayMetrics
-                val xPercent = rawX / dm.widthPixels
-                val yPercent = rawY / dm.heightPixels
-
-                FlowConfig.updateStepPosition(
-                    this@FlowRecordOverlayService,
-                    stepId, xPercent, yPercent
-                )
-
-                val resultIntent = Intent(FlowEditorActivity.ACTION_POSITION_RECORDED).apply {
-                    setPackage(packageName)
-                    putExtra(FlowEditorActivity.EXTRA_STEP_ID, stepId)
-                    putExtra(FlowEditorActivity.EXTRA_X_PERCENT, xPercent)
-                    putExtra(FlowEditorActivity.EXTRA_Y_PERCENT, yPercent)
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.rawX
+                    downY = event.rawY
+                    isCancelled = false
+                    true
                 }
-                sendBroadcast(resultIntent)
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = Math.abs(event.rawX - downX)
+                    val dy = Math.abs(event.rawY - downY)
+                    if (dx > moveThreshold || dy > moveThreshold) {
+                        isCancelled = true
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (isCancelled) {
+                        // 滑动操作 → 自动退出录制，不记录
+                        removeAll()
+                        stopSelf()
+                    } else {
+                        // 纯点击 → 记录坐标
+                        val dm = resources.displayMetrics
+                        val xPercent = downX / dm.widthPixels
+                        val yPercent = downY / dm.heightPixels
 
-                removeAll()
-                stopSelf()
-                return@setOnTouchListener true
+                        FlowConfig.updateStepPosition(
+                            this@FlowRecordOverlayService,
+                            stepId, xPercent, yPercent
+                        )
+
+                        val resultIntent = Intent(FlowEditorActivity.ACTION_POSITION_RECORDED).apply {
+                            setPackage(packageName)
+                            putExtra(FlowEditorActivity.EXTRA_STEP_ID, stepId)
+                            putExtra(FlowEditorActivity.EXTRA_X_PERCENT, xPercent)
+                            putExtra(FlowEditorActivity.EXTRA_Y_PERCENT, yPercent)
+                        }
+                        sendBroadcast(resultIntent)
+
+                        removeAll()
+                        stopSelf()
+                    }
+                    true
+                }
+                else -> false
             }
-            false
         }
 
         touchLayer = touchView

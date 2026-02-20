@@ -13,6 +13,17 @@ object FlowConfig {
 
     private const val PREFS_NAME = "flow_config"
     private const val KEY_FLOW = "flow_steps"
+    private const val KEY_TEST_CONTACT = "test_contact"
+
+    /** 读取测试联系人 */
+    fun getTestContact(context: Context): String {
+        return prefs(context).getString(KEY_TEST_CONTACT, "") ?: ""
+    }
+
+    /** 保存测试联系人 */
+    fun saveTestContact(context: Context, name: String) {
+        prefs(context).edit().putString(KEY_TEST_CONTACT, name).apply()
+    }
 
     /** 默认流程模板（8 步） */
     val DEFAULT_FLOW: List<FlowStep> = listOf(

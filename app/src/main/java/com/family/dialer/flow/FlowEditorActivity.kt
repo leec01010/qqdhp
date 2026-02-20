@@ -62,6 +62,9 @@ class FlowEditorActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnBack).setOnClickListener { finish() }
         etTestContact = findViewById(R.id.etTestContact)
 
+        // 加载已保存的测试联系人
+        etTestContact.setText(FlowConfig.getTestContact(this))
+
         recyclerView = findViewById(R.id.recyclerSteps)
         recyclerView.layoutManager = LinearLayoutManager(this)
         adapter = FlowStepAdapter { step -> startRecording(step) }
@@ -83,6 +86,8 @@ class FlowEditorActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnSave).setOnClickListener {
             FlowConfig.saveFlow(this, adapter.getSteps())
+            // 同时保存测试联系人
+            FlowConfig.saveTestContact(this, etTestContact.text.toString().trim())
             Toast.makeText(this, "✅ 流程配置已保存", Toast.LENGTH_SHORT).show()
             finish()
         }
