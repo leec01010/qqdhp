@@ -42,7 +42,7 @@ object FlowConfig {
             editable = true,
             xPercent = 0.85f,
             yPercent = 0.06f,
-            delayMs = 1500,
+            delayMs = 2500,
             hint = "微信主页右上角的放大镜图标"
         ),
         FlowStep(
