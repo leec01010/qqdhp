@@ -419,7 +419,8 @@ class WeChatVideoService : AccessibilityService() {
             layoutParams = lp
             setOnClickListener {
                 removeConfirmPanel()
-                processCurrentStep()
+                // 延迟 1 秒等待界面响应后再执行
+                handler.postDelayed({ processCurrentStep() }, 1000)
             }
         }
         btnRow.addView(btnNext)
