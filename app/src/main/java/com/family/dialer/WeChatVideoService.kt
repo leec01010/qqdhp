@@ -15,11 +15,15 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import com.family.dialer.flow.FlowConfig
 import com.family.dialer.flow.FlowStep
@@ -60,6 +64,9 @@ class WeChatVideoService : AccessibilityService() {
 
     /** 流程执行时的灰色遮罩 */
     private var overlayView: View? = null
+
+    /** 步骤确认浮窗面板 */
+    private var confirmPanel: View? = null
 
         /**
          * 执行单次坐标点击（供 FlowEditorActivity 录制前置步骤使用）
@@ -165,6 +172,11 @@ class WeChatVideoService : AccessibilityService() {
 
     /** 开始执行流程（由外部调用） */
     fun startFlow() {
+        // 防止流程重叠：清除所有待执行操作
+        handler.removeCallbacksAndMessages(null)
+        removeConfirmPanel()
+        removeOverlay()
+
         flowSteps = FlowConfig.getFlow(this)
 
         // 复制手机号到剪贴板（PASTE 步骤用）
@@ -182,7 +194,8 @@ class WeChatVideoService : AccessibilityService() {
         retryCount = 0
         showOverlay()
         Log.d(TAG, "流程开始，共 ${flowSteps.size} 步")
-        handler.postDelayed({ processCurrentStep() }, flowSteps[0].delayMs)
+        // 等待微信启动后显示第一步确认面板
+        handler.postDelayed({ showStepConfirmation() }, flowSteps[0].delayMs)
     }
 
     private fun processCurrentStep() {
@@ -341,21 +354,124 @@ class WeChatVideoService : AccessibilityService() {
         if (currentStepIndex >= flowSteps.size) {
             // 全部步骤完成
             tip("✅ 流程执行完毕")
-            // 延迟提示：如果未成功可能是非好友
             handler.postDelayed({
                 tip("如未发起通话，请检查该联系人是否是您的微信好友")
             }, 5000)
             handler.postDelayed({ enableSpeaker() }, 3000)
             finishFlow()
         } else {
-            handler.postDelayed({ processCurrentStep() }, currentStep.delayMs)
+            // 延迟后显示下一步确认面板（等待界面过渡）
+            handler.postDelayed({ showStepConfirmation() }, currentStep.delayMs)
+        }
+    }
+
+    /** 显示步骤确认浮窗面板 */
+    private fun showStepConfirmation() {
+        if (!isRunning || currentStepIndex < 0 || currentStepIndex >= flowSteps.size) return
+        removeConfirmPanel()
+
+        val step = flowSteps[currentStepIndex]
+        val stepDisplay = currentStepIndex  // LAUNCH 是第0步，跳过后从1开始
+        val totalDisplay = flowSteps.size - 1
+
+        val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY
+        }
+
+        val dp = { value: Int -> TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, value.toFloat(), resources.displayMetrics
+        ).toInt() }
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#F0FFFFFF"))
+            setPadding(dp(20), dp(16), dp(20), dp(16))
+        }
+
+        val infoText = TextView(this).apply {
+            text = "步骤 $stepDisplay/$totalDisplay：${step.label}"
+            setTextColor(Color.parseColor("#333333"))
+            textSize = 16f
+        }
+        layout.addView(infoText)
+
+        val hintText = TextView(this).apply {
+            text = step.hint ?: ""
+            setTextColor(Color.parseColor("#999999"))
+            textSize = 12f
+        }
+        layout.addView(hintText)
+
+        val btnRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(12), 0, 0)
+        }
+
+        val btnNext = Button(this).apply {
+            text = "▶ 下一步"
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.parseColor("#4CAF50"))
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            lp.setMargins(0, 0, dp(8), 0)
+            layoutParams = lp
+            setOnClickListener {
+                removeConfirmPanel()
+                processCurrentStep()
+            }
+        }
+        btnRow.addView(btnNext)
+
+        val btnExit = Button(this).apply {
+            text = "✕ 退出"
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.parseColor("#F44336"))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener {
+                tip("已退出流程")
+                finishFlow()
+            }
+        }
+        btnRow.addView(btnExit)
+
+        layout.addView(btnRow)
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            layoutType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.BOTTOM
+
+        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        wm.addView(layout, params)
+        confirmPanel = layout
+        Log.d(TAG, "显示确认面板：步骤 $stepDisplay - ${step.label}")
+    }
+
+    /** 移除步骤确认浮窗面板 */
+    private fun removeConfirmPanel() {
+        confirmPanel?.let {
+            try {
+                val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+                wm.removeView(it)
+            } catch (e: Exception) {
+                Log.w(TAG, "移除确认面板失败: ${e.message}")
+            }
+            confirmPanel = null
         }
     }
 
     /** 结束流程 */
     private fun finishFlow() {
+        handler.removeCallbacksAndMessages(null)
         isRunning = false
         currentStepIndex = -1
+        removeConfirmPanel()
         removeOverlay()
         retryCount = 0
     }
