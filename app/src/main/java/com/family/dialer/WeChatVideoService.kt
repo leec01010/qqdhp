@@ -82,6 +82,9 @@ class WeChatVideoService : AccessibilityService() {
     /** 步骤确认浮窗面板 */
     private var confirmPanel: android.view.View? = null
 
+    /** 流程执行时的灰色遮罩 */
+    private var overlayView: android.view.View? = null
+
     private fun tip(msg: String) {
         Log.d(TAG, msg)
         handler.post {
@@ -144,6 +147,7 @@ class WeChatVideoService : AccessibilityService() {
         isRunning = true
         waitingForConfirm = false
         retryCount = 0
+        showOverlay()
         Log.d(TAG, "流程开始 [${runMode.name}]，共 ${flowSteps.size} 步")
         // 等待微信启动后显示第一步确认面板
         handler.postDelayed({ showStepConfirmation() }, flowSteps[0].delayMs)
@@ -461,7 +465,50 @@ class WeChatVideoService : AccessibilityService() {
         waitingForConfirm = false
         currentStepIndex = -1
         removeConfirmPanel()
+        removeOverlay()
         retryCount = 0
+    }
+
+    /** 显示 30% 黑色遮罩（不拦截触摸） */
+    private fun showOverlay() {
+        if (overlayView != null) return
+        val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY
+        }
+
+        val view = android.view.View(this)
+        view.setBackgroundColor(Color.parseColor("#4D000000"))
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            layoutType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.TOP or Gravity.START
+
+        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        wm.addView(view, params)
+        overlayView = view
+    }
+
+    /** 移除遮罩 */
+    private fun removeOverlay() {
+        overlayView?.let {
+            try {
+                val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+                wm.removeView(it)
+            } catch (e: Exception) {
+                Log.w(TAG, "移除遮罩失败: ${e.message}")
+            }
+            overlayView = null
+        }
     }
 
     private fun enableSpeaker() {
