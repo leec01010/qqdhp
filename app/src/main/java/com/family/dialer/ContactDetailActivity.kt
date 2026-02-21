@@ -92,16 +92,17 @@ class ContactDetailActivity : AppCompatActivity() {
         tvName.text = c.name
         tvPhone.text = c.phone
 
-        // 手机微信
+        // 微信电话
         if (!c.wechatName.isNullOrBlank()) {
-            tvWechat.text = "手机微信: ${c.wechatName}"
+            tvWechat.text = "微信电话: ${c.wechatName}"
+            tvWechat.visibility = View.VISIBLE
+            btnWechatVideo.isEnabled = true
+            btnWechatVideo.alpha = 1f
         } else {
-            tvWechat.text = "手机微信: 使用手机号搜索"
+            tvWechat.visibility = View.GONE
+            btnWechatVideo.isEnabled = false
+            btnWechatVideo.alpha = 0.4f
         }
-        tvWechat.visibility = View.VISIBLE
-        // 微信视频按钮始终可用
-        btnWechatVideo.isEnabled = true
-        btnWechatVideo.alpha = 1f
     }
 
     // ---- 打电话 ----
@@ -205,7 +206,7 @@ class ContactDetailActivity : AppCompatActivity() {
         launchIntent?.let {
             it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             startActivity(it)
-            Toast.makeText(this, "正在打开微信，搜索手机号 $phone ...", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "正在打开微信，搜索 ${c.wechatName} ...", Toast.LENGTH_LONG).show()
 
             // 延迟启动流程引擎（等待微信打开）
             Handler(Looper.getMainLooper()).postDelayed({
