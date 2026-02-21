@@ -162,6 +162,8 @@ class WeChatVideoService : AccessibilityService() {
         if (!isRunning || currentStepIndex < 0 || currentStepIndex >= flowSteps.size) {
             return
         }
+        // 执行步骤前放开遮罩，让 dispatchGesture/performAction 能通过
+        setOverlayPassthrough(true)
 
         val step = flowSteps[currentStepIndex]
         val root = rootInActiveWindow
@@ -317,6 +319,8 @@ class WeChatVideoService : AccessibilityService() {
 
     /** 推进到下一步 */
     private fun advanceToNextStep(currentStep: FlowStep) {
+        // 步骤完成，恢复遮罩拦截
+        setOverlayPassthrough(false)
         retryCount = 0
         currentStepIndex++
         if (currentStepIndex >= flowSteps.size) {
@@ -540,6 +544,28 @@ class WeChatVideoService : AccessibilityService() {
         wm.addView(view, params)
         overlayView = view
         Log.d(TAG, "流程遮罩已显示（拦截触摸）")
+    }
+
+    /**
+     * 切换遮罩的触摸拦截状态
+     * @param touchable true = 放开（不拦截，让 dispatchGesture 通过）
+     *                  false = 拦截（阻止用户操作）
+     */
+    private fun setOverlayPassthrough(passthrough: Boolean) {
+        overlayView?.let { view ->
+            try {
+                val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+                val lp = view.layoutParams as WindowManager.LayoutParams
+                if (passthrough) {
+                    lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                } else {
+                    lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+                }
+                wm.updateViewLayout(view, lp)
+            } catch (e: Exception) {
+                Log.w(TAG, "切换遮罩触摸状态失败: ${e.message}")
+            }
+        }
     }
 
     /** 移除流程执行灰色遮罩 */
