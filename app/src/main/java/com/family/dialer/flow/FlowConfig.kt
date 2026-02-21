@@ -52,7 +52,7 @@ object FlowConfig {
             editable = true,
             xPercent = 0.75f,
             yPercent = 0.16f,
-            delayMs = 3000,
+            delayMs = 0,
             hint = "下拉菜单中的「添加朋友」选项"
         ),
         FlowStep(
@@ -62,7 +62,7 @@ object FlowConfig {
             editable = true,
             xPercent = 0.50f,
             yPercent = 0.10f,
-            delayMs = 2000,
+            delayMs = 0,
             hint = "添加朋友页面顶部的搜索框"
         ),
         FlowStep(
@@ -72,7 +72,7 @@ object FlowConfig {
             editable = true,
             xPercent = 0.50f,
             yPercent = 0.50f,
-            delayMs = 1500,
+            delayMs = 0,
             hint = "键盘上方的剪贴板粘贴建议（📋图标）"
         ),
         FlowStep(
@@ -82,7 +82,7 @@ object FlowConfig {
             editable = true,
             xPercent = 0.50f,
             yPercent = 0.22f,
-            delayMs = 2000,
+            delayMs = 0,
             hint = "搜索到的联系人卡片"
         ),
         FlowStep(
@@ -92,7 +92,7 @@ object FlowConfig {
             editable = true,
             xPercent = 0.50f,
             yPercent = 0.50f,
-            delayMs = 1500,
+            delayMs = 0,
             hint = "个人资料页的音视频通话按钮"
         ),
         FlowStep(
@@ -102,7 +102,7 @@ object FlowConfig {
             editable = true,
             xPercent = 0.50f,
             yPercent = 0.60f,
-            delayMs = 1000,
+            delayMs = 0,
             hint = "弹窗中选择视频通话"
         )
     )
