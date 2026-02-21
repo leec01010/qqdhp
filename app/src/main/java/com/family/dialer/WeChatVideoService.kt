@@ -7,12 +7,21 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.Path
+import android.graphics.PixelFormat
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.TypedValue
+import android.view.Gravity
+import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import com.family.dialer.flow.FlowConfig
 import com.family.dialer.flow.FlowRecordOverlayService
@@ -23,9 +32,10 @@ import com.family.dialer.flow.StepType
  * 微信视频拨打引擎 —— 统一流程驱动版
  *
  * 录制和执行使用完全相同的代码路径，通过 RunMode 区分：
- * - EXECUTE 模式：逐步自动执行每个步骤
+ * - EXECUTE 模式：逐步执行每个步骤
  * - RECORD 模式：前置步骤与 EXECUTE 相同，到达录制目标步骤时启动坐标录制
  *
+ * 每一步都需要用户点击"下一步"才会执行。
  * 新任务启动前会强制关闭旧任务。
  */
 class WeChatVideoService : AccessibilityService() {
@@ -44,6 +54,9 @@ class WeChatVideoService : AccessibilityService() {
 
         /** 是否正在执行流程 */
         var isRunning = false
+
+        /** 是否正在等待用户点击"下一步"确认 */
+        var waitingForConfirm = false
 
         /** 当前执行到的步骤索引 */
         var currentStepIndex = -1
@@ -65,6 +78,9 @@ class WeChatVideoService : AccessibilityService() {
     private var retryCount = 0
     private val MAX_RETRY = 20
     private var flowSteps: List<FlowStep> = emptyList()
+
+    /** 步骤确认浮窗面板 */
+    private var confirmPanel: android.view.View? = null
 
     private fun tip(msg: String) {
         Log.d(TAG, msg)
@@ -97,12 +113,14 @@ class WeChatVideoService : AccessibilityService() {
         if (event == null) return
         if (event.packageName?.toString() != "com.tencent.mm") return
 
-        // 检查是否有待启动的流程
         if (pendingStart && !isRunning) {
             pendingStart = false
             startFlow()
             return
         }
+
+        if (!isRunning) return
+        if (waitingForConfirm) return
     }
 
     /** 开始执行流程 */
@@ -124,10 +142,11 @@ class WeChatVideoService : AccessibilityService() {
         // 跳过第一步 LAUNCH（已由调用方处理）
         currentStepIndex = 1
         isRunning = true
+        waitingForConfirm = false
         retryCount = 0
         Log.d(TAG, "流程开始 [${runMode.name}]，共 ${flowSteps.size} 步")
-        // 等待微信启动后开始执行
-        handler.postDelayed({ processCurrentStep() }, flowSteps[0].delayMs)
+        // 等待微信启动后显示第一步确认面板
+        handler.postDelayed({ showStepConfirmation() }, flowSteps[0].delayMs)
     }
 
     private fun processCurrentStep() {
@@ -187,7 +206,6 @@ class WeChatVideoService : AccessibilityService() {
         val x = (xPercent * dm.widthPixels).toInt().toFloat()
         val y = (yPercent * dm.heightPixels).toInt().toFloat()
 
-        tip("${step.label}")
         Log.d(TAG, "TAP ($x, $y) 百分比 ($xPercent, $yPercent)")
 
         val path = Path().apply { moveTo(x, y) }
@@ -241,7 +259,6 @@ class WeChatVideoService : AccessibilityService() {
             return
         }
 
-        tip("${step.label}")
         val clickable = findClickableParent(targetNode) ?: targetNode
         clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
         advanceToNextStep(step)
@@ -270,7 +287,170 @@ class WeChatVideoService : AccessibilityService() {
             }
             finishFlow()
         } else {
-            handler.postDelayed({ processCurrentStep() }, currentStep.delayMs)
+            // 显示下一步确认面板
+            handler.postDelayed({ showStepConfirmation() }, currentStep.delayMs)
+        }
+    }
+
+    // ========== 确认面板 ==========
+
+    /** 显示步骤确认浮窗面板 */
+    private fun showStepConfirmation() {
+        if (!isRunning || currentStepIndex < 0 || currentStepIndex >= flowSteps.size) return
+        waitingForConfirm = true
+        removeConfirmPanel()
+
+        val step = flowSteps[currentStepIndex]
+        val stepDisplay = currentStepIndex  // LAUNCH 是第0步已跳过
+        val totalDisplay = flowSteps.size - 1
+
+        val isRecordTarget = runMode == RunMode.RECORD && step.id == recordTargetStepId
+
+        val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY
+        }
+
+        val dp = { value: Int -> TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, value.toFloat(), resources.displayMetrics
+        ).toInt() }
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#F0FFFFFF"))
+            setPadding(dp(20), dp(16), dp(20), dp(16))
+        }
+
+        // 模式标签
+        val modeLabel = if (runMode == RunMode.RECORD) "【录制模式】" else "【执行模式】"
+        val modeText = TextView(this).apply {
+            text = modeLabel
+            setTextColor(if (runMode == RunMode.RECORD) Color.parseColor("#E65100") else Color.parseColor("#1B5E20"))
+            textSize = 12f
+        }
+        layout.addView(modeText)
+
+        // 步骤信息
+        val infoText = TextView(this).apply {
+            text = "步骤 $stepDisplay/$totalDisplay：${step.label}"
+            setTextColor(Color.parseColor("#333333"))
+            textSize = 16f
+        }
+        layout.addView(infoText)
+
+        // 操作详情
+        val actionDesc = buildStepDescription(step, isRecordTarget)
+        val detailText = TextView(this).apply {
+            text = actionDesc
+            setTextColor(Color.parseColor("#666666"))
+            textSize = 13f
+        }
+        layout.addView(detailText)
+
+        // 提示文字
+        if (!step.hint.isNullOrBlank()) {
+            val hintText = TextView(this).apply {
+                text = step.hint
+                setTextColor(Color.parseColor("#999999"))
+                textSize = 12f
+            }
+            layout.addView(hintText)
+        }
+
+        val btnRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(12), 0, 0)
+        }
+
+        val btnNextLabel = if (isRecordTarget) "📍 开始录制" else "▶ 下一步"
+        val btnNextColor = if (isRecordTarget) "#1976D2" else "#4CAF50"
+
+        val btnNext = Button(this).apply {
+            text = btnNextLabel
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.parseColor(btnNextColor))
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            lp.setMargins(0, 0, dp(8), 0)
+            layoutParams = lp
+            setOnClickListener {
+                removeConfirmPanel()
+                waitingForConfirm = false
+                processCurrentStep()
+            }
+        }
+        btnRow.addView(btnNext)
+
+        val btnExit = Button(this).apply {
+            text = "✕ 退出"
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.parseColor("#F44336"))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener {
+                tip("已退出流程")
+                finishFlow()
+            }
+        }
+        btnRow.addView(btnExit)
+
+        layout.addView(btnRow)
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            layoutType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.BOTTOM
+
+        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        wm.addView(layout, params)
+        confirmPanel = layout
+        Log.d(TAG, "确认面板：步骤 $stepDisplay - ${step.label} [${runMode.name}]")
+    }
+
+    /** 生成步骤操作描述 */
+    private fun buildStepDescription(step: FlowStep, isRecordTarget: Boolean): String {
+        if (isRecordTarget) {
+            return "→ 将启动坐标录制，请点击「${step.label}」对应的位置"
+        }
+        return when (step.type) {
+            StepType.TAP -> {
+                if (step.xPercent != null && step.yPercent != null) {
+                    "→ 将点击屏幕 X:${(step.xPercent * 100).toInt()}% Y:${(step.yPercent * 100).toInt()}%"
+                } else {
+                    "→ 将点击屏幕（未设置坐标，需先录制）"
+                }
+            }
+            StepType.PASTE -> {
+                val clipText = targetWechatName ?: targetPhone ?: "?"
+                if (step.xPercent != null && step.yPercent != null) {
+                    "→ 将粘贴「$clipText」并点击 X:${(step.xPercent * 100).toInt()}% Y:${(step.yPercent * 100).toInt()}%"
+                } else {
+                    "→ 将粘贴「$clipText」（未设置坐标，需先录制）"
+                }
+            }
+            StepType.FIND_TAP -> {
+                val text = step.findText ?: targetWechatName ?: "?"
+                "→ 将查找并点击「$text」"
+            }
+            StepType.LAUNCH -> "→ 将启动微信"
+            StepType.DELAY -> "→ 等待 ${step.delayMs}ms"
+        }
+    }
+
+    /** 移除确认面板 */
+    private fun removeConfirmPanel() {
+        confirmPanel?.let {
+            try {
+                val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+                wm.removeView(it)
+            } catch (e: Exception) {
+                Log.w(TAG, "移除确认面板失败: ${e.message}")
+            }
+            confirmPanel = null
         }
     }
 
@@ -278,7 +458,9 @@ class WeChatVideoService : AccessibilityService() {
     private fun finishFlow() {
         handler.removeCallbacksAndMessages(null)
         isRunning = false
+        waitingForConfirm = false
         currentStepIndex = -1
+        removeConfirmPanel()
         retryCount = 0
     }
 
