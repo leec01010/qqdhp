@@ -12,10 +12,10 @@
     <string name="btn_delete">删除</string>
     <string name="hint_name">请输入姓名</string>
     <string name="hint_phone">请输入电话号码</string>
-    <string name="hint_wechat">请输入微信备注名（可选）</string>
+    <string name="hint_wechat">可选，留空则默认使用手机号搜索</string>
     <string name="label_name">姓名</string>
     <string name="label_phone">电话号码</string>
-    <string name="label_wechat">微信备注名</string>
+    <string name="label_wechat">手机微信</string>
     <string name="label_color">选择头像颜色</string>
     <string name="empty_contacts">还没有联系人\n点击下方「管理」按钮\n添加家人电话</string>
     <string name="long_press_hint">点击进入管理</string>

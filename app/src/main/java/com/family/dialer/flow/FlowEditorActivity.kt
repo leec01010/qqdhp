@@ -34,9 +34,6 @@ class FlowEditorActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: FlowStepAdapter
     private lateinit var etTestContact: EditText
-    private val handler = Handler(Looper.getMainLooper())
-
-    private var recordingStepId: String? = null
 
     private val positionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -51,7 +48,6 @@ class FlowEditorActivity : AppCompatActivity() {
                 "✅ 已录制：X=${(xPercent * 100).toInt()}% Y=${(yPercent * 100).toInt()}%",
                 Toast.LENGTH_SHORT
             ).show()
-            recordingStepId = null
         }
     }
 
@@ -105,7 +101,13 @@ class FlowEditorActivity : AppCompatActivity() {
         unregisterReceiver(positionReceiver)
     }
 
-    /** 启动坐标录制 */
+    /**
+     * 启动坐标录制 —— 使用统一引擎（与真实执行完全相同的代码路径）
+     *
+     * 设置 WeChatVideoService.runMode = RECORD，指定录制目标步骤 ID，
+     * 然后打开微信触发统一流程。前置步骤由 WeChatVideoService 统一处理，
+     * 每一步都需要用户确认。到达目标步骤时自动进入坐标录制模式。
+     */
     private fun startRecording(step: FlowStep) {
         if (!Settings.canDrawOverlays(this)) {
             AlertDialog.Builder(this)
@@ -138,6 +140,12 @@ class FlowEditorActivity : AppCompatActivity() {
         val stepIndex = allSteps.indexOfFirst { it.id == step.id }
         if (stepIndex < 0) return
 
+        // 第一步（LAUNCH）不需要前置步骤，直接启动录制浮窗
+        if (stepIndex == 0 || step.type == StepType.LAUNCH) {
+            launchOverlayDirect(step)
+            return
+        }
+
         // 检查是否有 PASTE 前置步骤 → 需要测试联系人
         val needsTestContact = (0 until stepIndex).any { allSteps[it].type == StepType.PASTE }
         val testName = etTestContact.text.toString().trim()
@@ -148,82 +156,28 @@ class FlowEditorActivity : AppCompatActivity() {
             return
         }
 
-        recordingStepId = step.id
+        // 保存当前编辑的流程（确保统一引擎使用最新配置）
+        FlowConfig.saveFlow(this, allSteps)
 
-        // 如果有前置步骤需要执行
-        val hasLaunchBefore = (0 until stepIndex).any { allSteps[it].type == StepType.LAUNCH }
+        // 设置统一引擎为 RECORD 模式
+        WeChatVideoService.runMode = WeChatVideoService.RunMode.RECORD
+        WeChatVideoService.recordTargetStepId = step.id
+        WeChatVideoService.targetPhone = testName.ifEmpty { null }
+        WeChatVideoService.targetWechatName = null
 
-        if (!hasLaunchBefore || stepIndex == 0) {
-            // 没有前置步骤（或者是第一步），直接启动浮窗
-            launchOverlay(step)
-            return
-        }
-
-        // 先复制测试联系人到剪贴板（如果需要）
+        // 复制测试联系人到剪贴板
         if (testName.isNotEmpty()) {
             copyToClipboard(testName)
         }
 
-        // 打开微信
+        // 打开微信，触发统一流程
         launchWeChat()
-        Toast.makeText(this, "正在自动执行前置步骤...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "正在打开微信，录制模式...", Toast.LENGTH_SHORT).show()
 
-        // 收集前置步骤（跳过 LAUNCH）
-        val preSteps = mutableListOf<FlowStep>()
-        for (i in 1 until stepIndex) {
-            preSteps.add(allSteps[i])
-        }
-
-        // 等微信启动后执行
-        handler.postDelayed({
-            runPreStepChain(preSteps, 0, step, testName)
-        }, allSteps[0].delayMs)
-    }
-
-    /**
-     * 逐步执行前置步骤链
-     */
-    private fun runPreStepChain(
-        preSteps: List<FlowStep>,
-        index: Int,
-        targetStep: FlowStep,
-        testName: String
-    ) {
-        if (index >= preSteps.size) {
-            // 前置步骤全部完成 → 启动浮窗（阶段一：确认按钮）
-            handler.postDelayed({ launchOverlay(targetStep) }, 1000)
-            return
-        }
-
-        val step = preSteps[index]
-        val dm = resources.displayMetrics
-
-        when (step.type) {
-            StepType.TAP -> {
-                if (step.xPercent != null && step.yPercent != null) {
-                    val x = (step.xPercent * dm.widthPixels).toFloat()
-                    val y = (step.yPercent * dm.heightPixels).toFloat()
-                    WeChatVideoService.executeSingleTap(x, y)
-                }
-            }
-            StepType.PASTE -> {
-                // PASTE = 和 TAP 一样的坐标点击（键盘剪贴板建议位置）
-                if (step.xPercent != null && step.yPercent != null) {
-                    val x = (step.xPercent * dm.widthPixels).toFloat()
-                    val y = (step.yPercent * dm.heightPixels).toFloat()
-                    WeChatVideoService.executeSingleTap(x, y)
-                }
-            }
-            StepType.FIND_TAP -> {
-                val text = if (step.findText.isNullOrEmpty()) testName else step.findText
-                WeChatVideoService.executeTestFindTap(text)
-            }
-            else -> { /* LAUNCH, DELAY: skip */ }
-        }
-
-        handler.postDelayed({
-            runPreStepChain(preSteps, index + 1, targetStep, testName)
-        }, step.delayMs)
+        // 延迟触发流程启动
+        Handler(Looper.getMainLooper()).postDelayed({
+            WeChatVideoService.pendingStart = true
+        }, 500)
     }
 
     /** 复制文字到剪贴板 */
@@ -239,7 +193,8 @@ class FlowEditorActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    private fun launchOverlay(step: FlowStep) {
+    /** 直接启动录制浮窗（无前置步骤时使用） */
+    private fun launchOverlayDirect(step: FlowStep) {
         val intent = Intent(this, FlowRecordOverlayService::class.java).apply {
             putExtra(FlowRecordOverlayService.EXTRA_STEP_ID, step.id)
             putExtra(FlowRecordOverlayService.EXTRA_STEP_LABEL, step.label)

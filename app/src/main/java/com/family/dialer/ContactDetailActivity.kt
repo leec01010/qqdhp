@@ -92,17 +92,16 @@ class ContactDetailActivity : AppCompatActivity() {
         tvName.text = c.name
         tvPhone.text = c.phone
 
-        // 微信备注名
+        // 手机微信
         if (!c.wechatName.isNullOrBlank()) {
-            tvWechat.text = "微信: ${c.wechatName}"
-            tvWechat.visibility = View.VISIBLE
-            btnWechatVideo.isEnabled = true
-            btnWechatVideo.alpha = 1f
+            tvWechat.text = "手机微信: ${c.wechatName}"
         } else {
-            tvWechat.visibility = View.GONE
-            btnWechatVideo.isEnabled = false
-            btnWechatVideo.alpha = 0.4f
+            tvWechat.text = "手机微信: 使用手机号搜索"
         }
+        tvWechat.visibility = View.VISIBLE
+        // 微信视频按钮始终可用
+        btnWechatVideo.isEnabled = true
+        btnWechatVideo.alpha = 1f
     }
 
     // ---- 打电话 ----
@@ -199,6 +198,8 @@ class ContactDetailActivity : AppCompatActivity() {
         // 设置目标并启动微信
         WeChatVideoService.targetPhone = phone
         WeChatVideoService.targetWechatName = c.wechatName
+        WeChatVideoService.runMode = WeChatVideoService.RunMode.EXECUTE
+        WeChatVideoService.recordTargetStepId = null
 
         val launchIntent = packageManager.getLaunchIntentForPackage("com.tencent.mm")
         launchIntent?.let {

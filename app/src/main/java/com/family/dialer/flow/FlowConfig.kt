@@ -76,16 +76,6 @@ object FlowConfig {
             hint = "键盘上方的剪贴板粘贴建议（📋图标）"
         ),
         FlowStep(
-            id = "search_btn",
-            label = "点击键盘「搜索」",
-            type = StepType.TAP,
-            editable = true,
-            xPercent = 0.90f,
-            yPercent = 0.96f,
-            delayMs = 2500,
-            hint = "键盘右下角的搜索按钮"
-        ),
-        FlowStep(
             id = "select_result",
             label = "点击搜索结果",
             type = StepType.TAP,

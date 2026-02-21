@@ -6,6 +6,7 @@ import android.accessibilityservice.GestureDescription
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Path
 import android.graphics.PixelFormat
@@ -26,20 +27,24 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import com.family.dialer.flow.FlowConfig
+import com.family.dialer.flow.FlowRecordOverlayService
 import com.family.dialer.flow.FlowStep
 import com.family.dialer.flow.StepType
 
 /**
- * 微信视频拨打引擎 —— 流程驱动版
+ * 微信视频拨打引擎 —— 统一流程驱动版
  *
- * 根据 FlowConfig 中保存的流程（用户可自定义坐标）逐步执行：
- * - TAP 步骤：使用 dispatchGesture() 在指定百分比坐标处点击
- * - PASTE 步骤：从剪贴板粘贴联系人名（先复制到剪贴板再 ACTION_PASTE）
- * - FIND_TAP 步骤：按文字查找节点并点击
- * - LAUNCH 步骤：启动 App（由调用方处理）
- * - DELAY 步骤：纯等待
+ * 录制和执行使用完全相同的代码路径，通过 RunMode 区分：
+ * - EXECUTE 模式：逐步执行每个步骤的操作
+ * - RECORD 模式：前置步骤与 EXECUTE 相同，到达录制目标步骤时启动坐标录制
+ *
+ * 每一步都需要用户点击"下一步"才会执行，不会自动乱按。
+ * 新任务启动前会强制关闭旧任务。
  */
 class WeChatVideoService : AccessibilityService() {
+
+    /** 运行模式 */
+    enum class RunMode { EXECUTE, RECORD }
 
     companion object {
         private const val TAG = "WeChatVideo"
@@ -53,80 +58,35 @@ class WeChatVideoService : AccessibilityService() {
         /** 是否正在执行流程 */
         var isRunning = false
 
+        /** 是否正在等待用户点击"下一步"确认 */
+        var waitingForConfirm = false
+
         /** 当前执行到的步骤索引 */
         var currentStepIndex = -1
 
-        /** 由 ContactDetailActivity 设置为 true 来触发流程启动 */
+        /** 由外部设置为 true 来触发流程启动 */
         var pendingStart = false
 
-        /** 服务实例引用（用于录制时执行前置步骤） */
+        /** 运行模式（EXECUTE / RECORD） */
+        var runMode: RunMode = RunMode.EXECUTE
+
+        /** RECORD 模式：要录制的目标步骤 ID */
+        var recordTargetStepId: String? = null
+
+        /** 服务实例引用 */
         private var instance: WeChatVideoService? = null
-
-    /** 流程执行时的灰色遮罩 */
-    private var overlayView: View? = null
-
-    /** 步骤确认浮窗面板 */
-    private var confirmPanel: View? = null
-
-        /**
-         * 执行单次坐标点击（供 FlowEditorActivity 录制前置步骤使用）
-         */
-        fun executeSingleTap(x: Float, y: Float) {
-            val svc = instance ?: return
-            val path = android.graphics.Path().apply { moveTo(x, y) }
-            val gesture = android.accessibilityservice.GestureDescription.Builder()
-                .addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 100))
-                .build()
-            svc.dispatchGesture(gesture, null, null)
-            android.util.Log.d(TAG, "录制前置 TAP: ($x, $y)")
-        }
-
-        // PASTE 步骤现在等同于 TAP（用户录制键盘粘贴建议的坐标）
-        // 剪贴板复制在 startFlow() / FlowEditorActivity 中完成
-
-        /**
-         * 通过文字查找节点并点击（录制前置 FIND_TAP 步骤）
-         */
-        fun executeTestFindTap(text: String) {
-            val svc = instance ?: return
-            val root = svc.rootInActiveWindow ?: return
-            val nodes = root.findAccessibilityNodeInfosByText(text)
-            if (!nodes.isNullOrEmpty()) {
-                for (node in nodes) {
-                    if (node.isClickable) {
-                        node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
-                        android.util.Log.d(TAG, "录制前置 FIND_TAP 点击: $text")
-                        return
-                    }
-                    // 往上找可点击的父节点
-                    var parent = node.parent
-                    while (parent != null) {
-                        if (parent.isClickable) {
-                            parent.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
-                            android.util.Log.d(TAG, "录制前置 FIND_TAP 点击父节点: $text")
-                            return
-                        }
-                        parent = parent.parent
-                    }
-                }
-            }
-        }
-
-        private fun findEditText(node: android.view.accessibility.AccessibilityNodeInfo): android.view.accessibility.AccessibilityNodeInfo? {
-            if (node.className?.toString() == "android.widget.EditText") return node
-            for (i in 0 until node.childCount) {
-                val child = node.getChild(i) ?: continue
-                val result = findEditText(child)
-                if (result != null) return result
-            }
-            return null
-        }
     }
 
     private val handler = Handler(Looper.getMainLooper())
     private var retryCount = 0
     private val MAX_RETRY = 20
     private var flowSteps: List<FlowStep> = emptyList()
+
+    /** 流程执行时的灰色遮罩 */
+    private var overlayView: View? = null
+
+    /** 步骤确认浮窗面板 */
+    private var confirmPanel: View? = null
 
     private fun tip(msg: String) {
         Log.d(TAG, msg)
@@ -167,15 +127,14 @@ class WeChatVideoService : AccessibilityService() {
         }
 
         if (!isRunning) return
-        processCurrentStep()
+        // 如果正在等待用户点击"下一步"，不自动执行步骤
+        if (waitingForConfirm) return
     }
 
     /** 开始执行流程（由外部调用） */
     fun startFlow() {
-        // 防止流程重叠：清除所有待执行操作
-        handler.removeCallbacksAndMessages(null)
-        removeConfirmPanel()
-        removeOverlay()
+        // 强制关闭旧任务（防止流程重叠）
+        finishFlow()
 
         flowSteps = FlowConfig.getFlow(this)
 
@@ -191,9 +150,10 @@ class WeChatVideoService : AccessibilityService() {
         // 跳过第一步 LAUNCH（已由调用方处理）
         currentStepIndex = 1
         isRunning = true
+        waitingForConfirm = false
         retryCount = 0
         showOverlay()
-        Log.d(TAG, "流程开始，共 ${flowSteps.size} 步")
+        Log.d(TAG, "流程开始 [${runMode.name}]，共 ${flowSteps.size} 步")
         // 等待微信启动后显示第一步确认面板
         handler.postDelayed({ showStepConfirmation() }, flowSteps[0].delayMs)
     }
@@ -206,7 +166,14 @@ class WeChatVideoService : AccessibilityService() {
         val step = flowSteps[currentStepIndex]
         val root = rootInActiveWindow
 
-        Log.d(TAG, "执行步骤 ${currentStepIndex + 1}/${flowSteps.size}: ${step.label} (${step.type})")
+        Log.d(TAG, "执行步骤 ${currentStepIndex + 1}/${flowSteps.size}: ${step.label} (${step.type}) [${runMode.name}]")
+
+        // RECORD 模式：到达目标步骤时启动坐标录制
+        if (runMode == RunMode.RECORD && step.id == recordTargetStepId) {
+            Log.d(TAG, "到达录制目标步骤: ${step.label}")
+            launchRecordOverlay(step)
+            return
+        }
 
         when (step.type) {
             StepType.LAUNCH -> {
@@ -231,6 +198,19 @@ class WeChatVideoService : AccessibilityService() {
                 advanceToNextStep(step)
             }
         }
+    }
+
+    /**
+     * RECORD 模式：启动坐标录制浮窗，结束当前流程
+     */
+    private fun launchRecordOverlay(step: FlowStep) {
+        tip("到达录制步骤：${step.label}")
+        val intent = Intent(this, FlowRecordOverlayService::class.java).apply {
+            putExtra(FlowRecordOverlayService.EXTRA_STEP_ID, step.id)
+            putExtra(FlowRecordOverlayService.EXTRA_STEP_LABEL, step.label)
+        }
+        startService(intent)
+        finishFlow()
     }
 
     /**
@@ -270,8 +250,6 @@ class WeChatVideoService : AccessibilityService() {
         }, null)
     }
 
-
-
     /**
      * FIND_TAP 步骤：按文字查找节点并点击
      * 对于 select_contact 步骤，使用精确匹配（避免「最常使用」冒充）
@@ -300,13 +278,10 @@ class WeChatVideoService : AccessibilityService() {
         }
 
         val targetNode = if (step.id == "select_contact") {
-            // 精确匹配：只匹配 text 完全等于 searchText 的节点
-            // 并排除 EditText 内的匹配和「最常使用」区域的匹配
             nodes.firstOrNull { node ->
                 val nodeText = node.text?.toString() ?: ""
                 nodeText == searchText && !isInsideEditText(node)
             } ?: nodes.firstOrNull { node ->
-                // 如果找不到完全匹配，在「联系人」分组下找含有 searchText 的
                 !isInsideEditText(node) && isUnderContactSection(node, root)
             }
         } else {
@@ -326,24 +301,17 @@ class WeChatVideoService : AccessibilityService() {
 
     /**
      * 检查节点是否在「联系人」分组下（而不是「最常使用」分组）
-     * 通过检查同层级是否有「联系人」标题来判断
      */
     private fun isUnderContactSection(node: AccessibilityNodeInfo, root: AccessibilityNodeInfo): Boolean {
-        // 查找「联系人」和「最常使用」标题节点
         val contactHeaders = root.findAccessibilityNodeInfosByText("联系人")
-        val frequentHeaders = root.findAccessibilityNodeInfosByText("最常使用")
-
         if (contactHeaders.isNullOrEmpty()) return false
 
-        // 获取节点的 Y 坐标
         val nodeRect = android.graphics.Rect()
         node.getBoundsInScreen(nodeRect)
 
         val contactRect = android.graphics.Rect()
         contactHeaders[0].getBoundsInScreen(contactRect)
 
-        // 如果有「最常使用」标题，节点应该在「联系人」标题之下
-        // 即节点的 Y 坐标大于「联系人」标题的 Y 坐标
         return nodeRect.top > contactRect.top
     }
 
@@ -353,11 +321,15 @@ class WeChatVideoService : AccessibilityService() {
         currentStepIndex++
         if (currentStepIndex >= flowSteps.size) {
             // 全部步骤完成
-            tip("✅ 流程执行完毕")
-            handler.postDelayed({
-                tip("如未发起通话，请检查该联系人是否是您的微信好友")
-            }, 5000)
-            handler.postDelayed({ enableSpeaker() }, 3000)
+            if (runMode == RunMode.EXECUTE) {
+                tip("✅ 流程执行完毕")
+                handler.postDelayed({
+                    tip("如未发起通话，请检查该联系人是否是您的微信好友")
+                }, 5000)
+                handler.postDelayed({ enableSpeaker() }, 3000)
+            } else {
+                tip("✅ 录制前置步骤全部完成")
+            }
             finishFlow()
         } else {
             // 延迟后显示下一步确认面板（等待界面过渡）
@@ -368,11 +340,15 @@ class WeChatVideoService : AccessibilityService() {
     /** 显示步骤确认浮窗面板 */
     private fun showStepConfirmation() {
         if (!isRunning || currentStepIndex < 0 || currentStepIndex >= flowSteps.size) return
+        waitingForConfirm = true
         removeConfirmPanel()
 
         val step = flowSteps[currentStepIndex]
         val stepDisplay = currentStepIndex  // LAUNCH 是第0步，跳过后从1开始
         val totalDisplay = flowSteps.size - 1
+
+        // RECORD 模式且到达目标步骤时，直接执行（启动录制浮窗）
+        val isRecordTarget = runMode == RunMode.RECORD && step.id == recordTargetStepId
 
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
@@ -391,6 +367,16 @@ class WeChatVideoService : AccessibilityService() {
             setPadding(dp(20), dp(16), dp(20), dp(16))
         }
 
+        // 模式标签
+        val modeLabel = if (runMode == RunMode.RECORD) "【录制模式】" else "【执行模式】"
+        val modeText = TextView(this).apply {
+            text = modeLabel
+            setTextColor(if (runMode == RunMode.RECORD) Color.parseColor("#E65100") else Color.parseColor("#1B5E20"))
+            textSize = 12f
+        }
+        layout.addView(modeText)
+
+        // 步骤信息
         val infoText = TextView(this).apply {
             text = "步骤 $stepDisplay/$totalDisplay：${step.label}"
             setTextColor(Color.parseColor("#333333"))
@@ -398,6 +384,16 @@ class WeChatVideoService : AccessibilityService() {
         }
         layout.addView(infoText)
 
+        // 操作详情（说明这一步会做什么）
+        val actionDesc = buildStepDescription(step, isRecordTarget)
+        val detailText = TextView(this).apply {
+            text = actionDesc
+            setTextColor(Color.parseColor("#666666"))
+            textSize = 13f
+        }
+        layout.addView(detailText)
+
+        // 提示文字
         val hintText = TextView(this).apply {
             text = step.hint ?: ""
             setTextColor(Color.parseColor("#999999"))
@@ -410,17 +406,27 @@ class WeChatVideoService : AccessibilityService() {
             setPadding(0, dp(12), 0, 0)
         }
 
+        val btnNextLabel = when {
+            isRecordTarget -> "📍 开始录制"
+            else -> "▶ 下一步"
+        }
+        val btnNextColor = when {
+            isRecordTarget -> "#1976D2"
+            else -> "#4CAF50"
+        }
+
         val btnNext = Button(this).apply {
-            text = "▶ 下一步"
+            text = btnNextLabel
             setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#4CAF50"))
+            setBackgroundColor(Color.parseColor(btnNextColor))
             val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             lp.setMargins(0, 0, dp(8), 0)
             layoutParams = lp
             setOnClickListener {
                 removeConfirmPanel()
-                // 延迟 1 秒等待界面响应后再执行
-                handler.postDelayed({ processCurrentStep() }, 1000)
+                waitingForConfirm = false
+                // 延迟 1.5 秒等待界面响应后再执行
+                handler.postDelayed({ processCurrentStep() }, 1500)
             }
         }
         btnRow.addView(btnNext)
@@ -451,7 +457,37 @@ class WeChatVideoService : AccessibilityService() {
         val wm = getSystemService(WINDOW_SERVICE) as WindowManager
         wm.addView(layout, params)
         confirmPanel = layout
-        Log.d(TAG, "显示确认面板：步骤 $stepDisplay - ${step.label}")
+        Log.d(TAG, "显示确认面板：步骤 $stepDisplay - ${step.label} [${runMode.name}]")
+    }
+
+    /** 生成步骤操作描述 */
+    private fun buildStepDescription(step: FlowStep, isRecordTarget: Boolean): String {
+        if (isRecordTarget) {
+            return "→ 将启动坐标录制，请点击「${step.label}」对应的位置"
+        }
+        return when (step.type) {
+            StepType.TAP -> {
+                if (step.xPercent != null && step.yPercent != null) {
+                    "→ 将点击屏幕位置 X:${(step.xPercent * 100).toInt()}% Y:${(step.yPercent * 100).toInt()}%"
+                } else {
+                    "→ 将点击屏幕（未设置坐标，需先录制）"
+                }
+            }
+            StepType.PASTE -> {
+                val clipText = targetPhone ?: targetWechatName ?: "?"
+                if (step.xPercent != null && step.yPercent != null) {
+                    "→ 将粘贴「$clipText」并点击位置 X:${(step.xPercent * 100).toInt()}% Y:${(step.yPercent * 100).toInt()}%"
+                } else {
+                    "→ 将粘贴「$clipText」（未设置坐标，需先录制）"
+                }
+            }
+            StepType.FIND_TAP -> {
+                val text = step.findText ?: targetWechatName ?: "?"
+                "→ 将查找并点击文字「$text」"
+            }
+            StepType.LAUNCH -> "→ 将启动微信"
+            StepType.DELAY -> "→ 等待 ${step.delayMs}ms"
+        }
     }
 
     /** 移除步骤确认浮窗面板 */
@@ -471,6 +507,7 @@ class WeChatVideoService : AccessibilityService() {
     private fun finishFlow() {
         handler.removeCallbacksAndMessages(null)
         isRunning = false
+        waitingForConfirm = false
         currentStepIndex = -1
         removeConfirmPanel()
         removeOverlay()
@@ -557,10 +594,6 @@ class WeChatVideoService : AccessibilityService() {
         return false
     }
 
-    private fun findNodeByClassName(root: AccessibilityNodeInfo, className: String): AccessibilityNodeInfo? {
-        return traverseFind(root) { it.className?.toString() == className }
-    }
-
     private fun findClickableParent(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
         var current = node.parent
         var depth = 0
@@ -580,19 +613,6 @@ class WeChatVideoService : AccessibilityService() {
             }
         }
         return texts.take(8).joinToString(", ")
-    }
-
-    private fun traverseFind(
-        node: AccessibilityNodeInfo,
-        predicate: (AccessibilityNodeInfo) -> Boolean
-    ): AccessibilityNodeInfo? {
-        if (predicate(node)) return node
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            val result = traverseFind(child, predicate)
-            if (result != null) return result
-        }
-        return null
     }
 
     private fun traverseAll(node: AccessibilityNodeInfo, action: (AccessibilityNodeInfo) -> Unit) {
