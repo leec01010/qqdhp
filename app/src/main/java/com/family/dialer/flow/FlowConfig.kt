@@ -40,8 +40,8 @@ object FlowConfig {
             label = "点击右上角 + 号",
             type = StepType.TAP,
             editable = true,
-            xPercent = 0.95f,
-            yPercent = 0.06f,
+            xPercent = 0.97f,
+            yPercent = 0.08f,
             delayMs = 1500,
             hint = "微信主页右上角的 + 按钮"
         ),
@@ -51,7 +51,7 @@ object FlowConfig {
             type = StepType.TAP,
             editable = true,
             xPercent = 0.75f,
-            yPercent = 0.16f,
+            yPercent = 0.21f,
             delayMs = 0,
             hint = "下拉菜单中的「添加朋友」选项"
         ),
@@ -60,8 +60,8 @@ object FlowConfig {
             label = "点击搜索框",
             type = StepType.TAP,
             editable = true,
-            xPercent = 0.50f,
-            yPercent = 0.10f,
+            xPercent = 0.53f,
+            yPercent = 0.13f,
             delayMs = 0,
             hint = "添加朋友页面顶部的搜索框"
         ),
@@ -70,8 +70,8 @@ object FlowConfig {
             label = "粘贴手机号",
             type = StepType.PASTE,
             editable = true,
-            xPercent = 0.50f,
-            yPercent = 0.50f,
+            xPercent = 0.16f,
+            yPercent = 0.72f,
             delayMs = 0,
             hint = "键盘上方的剪贴板粘贴建议（📋图标）"
         ),
@@ -80,8 +80,8 @@ object FlowConfig {
             label = "点击搜索结果",
             type = StepType.TAP,
             editable = true,
-            xPercent = 0.50f,
-            yPercent = 0.22f,
+            xPercent = 0.55f,
+            yPercent = 0.16f,
             delayMs = 0,
             hint = "搜索到的联系人卡片"
         ),
@@ -90,8 +90,8 @@ object FlowConfig {
             label = "点击「音视频通话」",
             type = StepType.TAP,
             editable = true,
-            xPercent = 0.50f,
-            yPercent = 0.50f,
+            xPercent = 0.49f,
+            yPercent = 0.46f,
             delayMs = 0,
             hint = "个人资料页的音视频通话按钮"
         ),
@@ -100,8 +100,8 @@ object FlowConfig {
             label = "选择「视频通话」",
             type = StepType.TAP,
             editable = true,
-            xPercent = 0.50f,
-            yPercent = 0.60f,
+            xPercent = 0.51f,
+            yPercent = 0.86f,
             delayMs = 0,
             hint = "弹窗中选择视频通话"
         )
