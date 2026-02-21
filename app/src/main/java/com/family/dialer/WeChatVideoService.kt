@@ -513,7 +513,7 @@ class WeChatVideoService : AccessibilityService() {
         retryCount = 0
     }
 
-    /** 显示流程执行灰色遮罩（不拦截触摸） */
+    /** 显示流程执行遮罩（拦截触摸，阻止用户操作） */
     private fun showOverlay() {
         if (overlayView != null) return
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -531,7 +531,6 @@ class WeChatVideoService : AccessibilityService() {
             WindowManager.LayoutParams.MATCH_PARENT,
             layoutType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         )
@@ -540,7 +539,7 @@ class WeChatVideoService : AccessibilityService() {
         val wm = getSystemService(WINDOW_SERVICE) as WindowManager
         wm.addView(view, params)
         overlayView = view
-        Log.d(TAG, "流程遮罩已显示")
+        Log.d(TAG, "流程遮罩已显示（拦截触摸）")
     }
 
     /** 移除流程执行灰色遮罩 */
